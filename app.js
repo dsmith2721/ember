@@ -162,9 +162,10 @@ if(had&&S.fz>=gap.length){S.fz-=gap.length;S.frozen.push(...gap);notes.push(gap.
 save();notes.forEach(toast)}
 
 /* ---------- Feedback: toast, floating numbers, embers ---------- */
-const TQ=[];let tBusy=false;
-function toast(m){TQ.push(m);if(!tBusy)nextToast()}
-function nextToast(){const t=$("#toast"),m=TQ.shift();if(!m){tBusy=false;t.classList.remove("on");return}tBusy=true;t.textContent=m;t.classList.add("on");setTimeout(()=>{t.classList.remove("on");setTimeout(nextToast,200)},TQ.length>1?1500:2600)}
+const TQ=[];let tBusy=false,tT1=0,tT2=0;
+/* now=true replaces whatever is showing, for instant feedback */
+function toast(m,now){if(now){TQ.length=0;clearTimeout(tT1);clearTimeout(tT2);TQ.push(m);nextToast();return}TQ.push(m);if(!tBusy)nextToast()}
+function nextToast(){const t=$("#toast"),m=TQ.shift();if(!m){tBusy=false;t.classList.remove("on");return}tBusy=true;t.textContent=m;t.classList.add("on");tT1=setTimeout(()=>{t.classList.remove("on");tT2=setTimeout(nextToast,200)},TQ.length>1?1500:2600)}
 function plus(el,n){if(!n||!el)return;const r=el.getBoundingClientRect(),e=document.createElement("span");e.className="plus";e.textContent="+"+n;e.style.left=r.left+r.width/2+"px";e.style.top=r.top+"px";document.body.appendChild(e);
 if(RM.matches||!e.animate){setTimeout(()=>e.remove(),900);return}e.animate([{transform:"translate(-50%,0)",opacity:1},{transform:"translate(-50%,-46px)",opacity:0}],{duration:1100,easing:"cubic-bezier(.2,.7,.4,1)"}).onfinish=()=>e.remove()}
 function burst(el,N=12,H=90){if(!el||RM.matches||!el.animate)return;const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
@@ -202,7 +203,13 @@ if(!res){paintGoals();return}
 fx(b.querySelector(".ring"),res,12*fuel(id));
 if(!a0&&allLit())burst($(".fl svg"),34,170);else if(tier(streak(S.on)).n>t0)burst($(".fl svg"),22,130);
 paint();paintGoals()});
-paint(true);paintGoals()}
+bindFlame();paint(true);paintGoals()}
+/* tap the big flame: normal flicker, then slow, then still, then normal again */
+const FLICK=["dancing","slow","still"],FLICK_MSG=["Your flame is dancing again.","Flame slowed down.","Flame is still. Tap again to let it dance."];
+function bindFlame(){const f=$(".fl");if(!f)return;const set=()=>{f.dataset.flick=S.flick||0;f.setAttribute("aria-label",`Your flame, flickering: ${FLICK[S.flick||0]}. Tap to change.`)};
+f.setAttribute("role","button");f.tabIndex=0;set();
+const step=()=>{S.flick=((S.flick||0)+1)%3;save();set();toast(FLICK_MSG[S.flick],true)};
+f.onclick=step;f.onkeydown=e=>{if(e.key=="Enter"||e.key==" "){e.preventDefault();step()}}}
 function paint(first){
 const on=S.on,ex=expected(),m=ex.length,n=litN(),p=heat(on),st=streak(on),fl=$(".fl");if(!fl)return;
 if(first&&!RM.matches){fl.style.setProperty("--p",0);fl.toggleAttribute("data-zero",true);requestAnimationFrame(()=>requestAnimationFrame(()=>{fl.style.setProperty("--p",p);fl.toggleAttribute("data-zero",!p)}))}
