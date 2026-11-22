@@ -18,6 +18,8 @@ Ember is a free web app for growing in faith: a flame that grows as you light da
 
 At the top of `app.js`:
 
+- `SITE`: Ember's public address (`https://dsmith2721.github.io/ember/`). Every shared link and invite uses it.
+
 - `SUGGEST_URL`: paste a free Formspree form address (`https://formspree.io/f/...`) to get an email whenever someone suggests a podcast, station, devotional, commentary or book they added. Leave it empty to send nothing.
 
 ## Updating
