@@ -12,7 +12,8 @@ Ember is a free web app for growing in faith: a flame that grows as you light da
 | `install.html` | The page shared links open, with steps for adding Ember to a home screen |
 | `sw.js` | Lets Ember load quickly and work offline |
 | `manifest.json` | App name, colors and icons for home-screen installs |
-| `icons/icon-192.png`, `icons/icon-512.png` | App icons (keep them inside the `icons` folder) |
+| `icon-192.png`, `icon-512.png` | App icons |
+| `og-image.jpg` | The picture shown when an Ember link is shared |
 
 ## Settings
 
@@ -24,6 +25,6 @@ At the top of `app.js`:
 
 ## Updating
 
-Upload all files to the GitHub repository, keeping the `icons` folder. GitHub Pages updates within a minute or two. People who already installed Ember get the new version the next time they open it (sometimes after reopening once).
+Upload all files to the main folder of the GitHub repository. GitHub Pages updates within a minute or two. People who already installed Ember get the new version the next time they open it (sometimes after reopening once).
 
 Each person's progress is saved on their own device. Nothing is sent to a server.

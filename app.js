@@ -458,7 +458,8 @@ function trOptions(){const favs=TRS.filter(t=>isFav("tr:"+t[0])),o=t=>`<option v
 return (favs.length?`<optgroup label="Your favorites">${favs.map(o).join("")}</optgroup>`:"")+["English","Spanish","Other languages"].map(g=>`<optgroup label="${g}">${TRS.filter(t=>t[2]==g).map(o).join("")}</optgroup>`).join("")}
 function bgChips(){const f=BGV.filter(v=>isFav("bg:"+v[0]));return f.length?f.map(([c,n])=>`<a class="chip" href="${bgUrl(c)}" target="_blank" rel="noopener" data-earn="ch" title="${esc(n)}">${c}</a>`).join(""):`<p class="mut" style="margin:0">Tap the ember beside any version below to pin it here.</p>`}
 function otherVersions(){return `<h3>Other versions</h3><p class="mut" style="margin:0 2px 8px">NKJV, NIV, Amplified and other modern versions are copyrighted, so they open this chapter on Bible Gateway. Reading there still lights your Bible reading.</p>
-<details ${LISTS.bg().some(isFav)?"open":""}><summary>All ${BGV.length} versions</summary><div data-list="bg">${listHTML("bg")}</div></details>`}
+<div class="chips2" data-strip="bgchips">${bgChips()}</div>
+<details><summary>All ${BGV.length} versions</summary><div data-list="bg">${listHTML("bg")}</div></details>`}
 /* free commentaries on Bible Hub: [code, name, description, New Testament only] */
 const COMM=[["mhcw","Matthew Henry (complete)","Warm, practical, the best-loved classic"],["mhc","Matthew Henry (concise)","The short version of Henry"],["barnes","Barnes' Notes","Clear verse-by-verse notes"],["clarke","Adam Clarke","Wesleyan, rich in background"],["gill","John Gill","Detailed Baptist exposition"],["jfb","Jamieson-Fausset-Brown","Concise and careful"],["poole","Matthew Poole","Puritan verse-by-verse notes"],["calvin","John Calvin","The Reformer's own commentaries"],["ellicott","Ellicott's Commentary","For English readers"],["pulpit","Pulpit Commentary","Exposition plus sermon outlines"],["benson","Benson Commentary","Methodist, devotional"],["wes","Wesley's Notes","John Wesley's brief notes"],["cambridge","Cambridge Bible","Scholarly, for schools and colleges"],["expositors","Expositor's Bible","Preached exposition"],["maclaren","MacLaren's Expositions","Sermons by Alexander MacLaren"],["meyer","Meyer's NT Commentary","German scholarly classic"],["gsb","Geneva Study Bible","Notes from the 1599 Geneva Bible"],["bengel","Bengel's Gnomon","Short, pointed insights",1],["vws","Vincent's Word Studies","Greek word meanings",1],["egt","Expositor's Greek Testament","For readers of Greek",1]];
 const BOOKSLUG={"Song of Solomon":"songs"};
@@ -467,7 +468,8 @@ const ewSlug=b=>b=="Psalms"?"psalm":b.toLowerCase().replace(/ /g,"-");
 const isNT=()=>BOOKS.indexOf(S.book)>=39;
 function commChips(){const f=LISTS.cm().filter(isFav);return f.length?f.map(k=>{const it=ITEMS[k],L=typeof it.links=="function"?it.links():it.links;return `<a class="chip" href="${L[0][1]}" target="_blank" rel="noopener" data-earn="study">${esc(it.n)}</a>`}).join(""):`<p class="mut" style="margin:0">Tap the ember beside any commentary below to pin it here.</p>`}
 function commentaries(){return `<h3>Commentaries on ${esc(S.book)} ${S.ch}</h3><p class="mut" style="margin:0 2px 8px">Free commentaries open this chapter on Bible Hub or Enduring Word. Reading one lights Bible study for today.</p>
-<details ${LISTS.cm().some(isFav)?"open":""}><summary>All ${LISTS.cm().length} commentaries</summary><div data-list="cm">${listHTML("cm")}</div></details>${addForm("cm","commentary")}`}
+<div class="chips2" data-strip="cmchips">${commChips()}</div>
+<details><summary>All ${LISTS.cm().length} commentaries</summary><div data-list="cm">${listHTML("cm")}</div></details>${addForm("cm","commentary")}`}
 function bible(){
 $("#main").innerHTML=`<section class="band"><div class="bt"><button class="nb" id="pv" aria-label="Previous chapter">${CHL}</button><h2 id="ref" aria-live="polite">${esc(S.book)} ${S.ch}</h2><button class="nb" id="nx" aria-label="Next chapter">${CHR}</button></div>
 <div class="ctl"><select id="bk" aria-label="Book">${BOOKS.map(b=>`<option ${b==S.book?"selected":""}>${b}</option>`).join("")}</select><input id="ch" type="number" min="1" inputmode="numeric" value="${S.ch}" aria-label="Chapter">
@@ -540,14 +542,16 @@ const LIB=[
 const aSlug=a=>a.toLowerCase().replace(/[^a-z]+/g,"-");
 function devTabs(){return `<div class="seg2" role="tablist" aria-label="Devotionals or books"><button role="tab" data-rt="dev" aria-selected="${(S.rt||"dev")=="dev"}">Devotionals</button><button role="tab" data-rt="books" aria-selected="${S.rt=="books"}">Christian books</button></div>`}
 function devos(){if(S.rt=="books")return books();const G2=[...new Set(DEVLINKS.map(d=>d[4]))];
-$("#main").innerHTML=`<section class="band"><h2>Devotionals</h2><p>Reading plans you can read right here, plus free devotionals from around the web. Tap the ember beside any item to make it a favorite. It moves to the top of its list.</p>${devTabs()}</section>
+$("#main").innerHTML=`<section class="band"><h2>Devotionals</h2><p>Reading plans you can read right here, plus free devotionals from around the web. Tap the ember to move a favorite to the top.</p>${devTabs()}</section>
+<div class="card list"><h3>Your favorites</h3><div data-strip="plan:,dev:">${stripHTML(["plan:","dev:"])}</div></div>
 ${G2.map(g=>`<div class="card list"><h3>${g}</h3><div data-list="dev-${aSlug(g)}">${listHTML("dev-"+aSlug(g))}</div></div>`).join("")}
 <div class="card list"><h3>Your devotionals</h3><div data-list="dev-custom">${listHTML("dev-custom")}</div>${addForm("dev","devotional")}</div>
 <div class="card list"><h3>Reading plans</h3><p class="mut" style="margin:0 2px 4px">Read right here in Ember. Each gives you a chapter for today, chosen by the date. Read more than one to add embers.</p><div data-list="plans">${listHTML("plans")}</div></div>
 <div class="card" id="dv" hidden></div>
 <p class="mut" style="margin:0 4px 14px">Devotional sites open in your browser. Opening one lights Devotionals for today.</p>`;bindSeg()}
 function books(){
-$("#main").innerHTML=`<section class="band"><h2>Christian books</h2><p>Classics free to read online, from Spurgeon and Murray to Bunyan and the Puritans. Tap the ember beside any item to make it a favorite. It moves to the top of its list.</p>${devTabs()}</section>
+$("#main").innerHTML=`<section class="band"><h2>Christian books</h2><p>Classics free to read online, from Spurgeon and Murray to Bunyan and the Puritans. Tap the ember to move a favorite to the top.</p>${devTabs()}</section>
+<div class="card list"><h3>Your favorites</h3><div data-strip="bk:">${stripHTML(["bk:"])}</div></div>
 ${LIB.map(([a,note])=>`<div class="card list"><h3>${esc(a)}</h3><p class="mut" style="margin:0 2px 4px">${esc(note)}</p><div data-list="bk-${aSlug(a)}">${listHTML("bk-"+aSlug(a))}</div></div>`).join("")}
 <div class="card list"><h3>Your books</h3><div data-list="bk-custom">${listHTML("bk-custom")}</div>${addForm("bk","book")}</div>
 <div class="card"><h3>Not free online</h3><p class="mut" style="margin:0">Books by C. S. Lewis, Dietrich Bonhoeffer, Major Ian Thomas and most modern authors are still under copyright, so they can't be shared free here. Look for them at your library, or through the Libby app with a library card.</p></div>
@@ -631,7 +635,8 @@ const PODCATS=[
 ["Orthodox","From the Orthodox tradition.",[["Ancient Faith Today","Ancient Faith Ministries"],["Lord Have Mercy","Ancient Faith Ministries"]]]];
 const podLinks=n=>{const q=encodeURIComponent(n.replace(/\s*\(.*?\)\s*/g," ").trim());return [["Apple",`https://podcasts.apple.com/us/search?term=${q}`],["Spotify",`https://open.spotify.com/search/${q}/podcasts`]]};
 function podcasts(){
-$("#main").innerHTML=`<section class="band"><h2>Podcasts</h2><p>Bible reading, teaching, prayer, apologetics and more. Each opens in Apple Podcasts or Spotify. Tap the ember beside any item to make it a favorite. It moves to the top of its list.</p></section>
+$("#main").innerHTML=`<section class="band"><h2>Podcasts</h2><p>Bible reading, teaching, prayer, apologetics and more. Each opens in Apple Podcasts or Spotify. Tap the ember to move a favorite to the top.</p></section>
+<div class="card list"><h3>Your favorites</h3><div data-strip="pod:">${stripHTML(["pod:"])}</div></div>
 <div class="card list"><h3>Featured</h3><div data-list="podfeat">${listHTML("podfeat")}</div></div>
 ${PODCATS.map(([t,note])=>`<div class="card list"><h3>${t}</h3><p class="mut" style="margin:0 2px 4px">${note}</p><div data-list="pc-${aSlug(t)}">${listHTML("pc-"+aSlug(t))}</div></div>`).join("")}
 <div class="card list"><h3>From your tradition</h3><label class="mut" for="dn" style="margin:0 2px">Your tradition</label><select id="dn">${Object.keys(POD).map(k=>`<option ${k==S.denom?"selected":""}>${k}</option>`).join("")}</select><div id="po" data-list="podtrad"></div></div>
@@ -694,6 +699,7 @@ const aKey=n=>"radio:a-"+n.toLowerCase().replace(/[^a-z0-9]+/g,"-");
 const HNOTE={"Hymns":"Round-the-clock hymn stations. Each opens on TuneIn, which plays free in your browser.","Old hymns":"Traditional, instrumental and bluegrass hymns, plus programs on the stories behind them.","Modern hymns":"New hymns written for today's church. The artist buttons open Spotify or YouTube Music, where you tap Radio for nonstop hymns."};
 function radio(){const G3=[...new Set(RADIO.map(r=>r[4]))];
 $("#main").innerHTML=`<section class="band"><h2>Christian radio</h2><p>${RADIO.length} stations and ${ARTISTS.length+MHYMN.length} artist radios, from worship and hymns to hip-hop, Catholic and Orthodox. Each opens the station's own site to listen live.</p></section>
+<div class="card list"><h3>Your favorites</h3><div data-strip="radio:">${stripHTML(["radio:"])}</div></div>
 ${G3.map(g=>`<div class="card list"><h3>${g}</h3>${HNOTE[g]?`<p class="mut" style="margin:0 2px 4px">${HNOTE[g]}</p>`:""}<div data-list="radio-${aSlug(g)}">${listHTML("radio-"+aSlug(g))}</div></div>`+(g=="Worship and praise"?`<div class="card list"><h3>Worship artist radio</h3><p class="mut" style="margin:0 2px 4px">Each opens the artist in Spotify or YouTube Music. Tap the artist's Radio there for nonstop music from them and similar artists.</p><div data-list="artists">${listHTML("artists")}</div></div>`:"")).join("")}
 <div class="card list"><h3>Your stations</h3><div data-list="radio-custom">${listHTML("radio-custom")}</div>${addForm("radio","radio station")}</div>
 <div class="card list"><a class="lk" href="https://tunein.com/search/?query=christian%20radio" target="_blank" rel="noopener"><span class="t"><b>Find more on TuneIn</b><span class="mut">Thousands of Christian stations worldwide</span></span>${EXT}</a></div>

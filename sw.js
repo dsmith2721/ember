@@ -1,4 +1,4 @@
-const V='ember-v6',A=['./','index.html','install.html','app.js','manifest.json','icons/icon-192.png','icons/icon-512.png'];
+const V='ember-v8',A=['./','index.html','install.html','app.js','manifest.json','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.addAll(A))));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x))))));
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||new URL(e.request.url).origin!==location.origin)return;
