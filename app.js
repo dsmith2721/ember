@@ -92,7 +92,7 @@ const JAR=2500,JAR_BONUS=250,FREEZE_COST=200,FREEZE_MAX=2;
 const TMULT=[1,1,1.1,1.2,1.3,1.5,2];   /* streak level multipliers: none, Spark, Kindling, Steady flame, Blaze, Bonfire, Beacon */
 const XTRA={ /* going further: embers each, and a daily cap */
 ch:{t:"Read another Bible chapter",e:6,cap:10},pray:{t:"Pray 5 more minutes",e:8,cap:12},kind:{t:"Another act of kindness",e:8,cap:10},
-memo:{t:"Practice a kept verse",e:6,cap:10},pod:{t:"Listen to a podcast episode",e:6,cap:3},devo:{t:"Read another devotional",e:6,cap:5}};
+memo:{t:"Practice a kept verse",e:6,cap:10},pod:{t:"Listen to a podcast or radio",e:6,cap:3},devo:{t:"Read another devotional",e:6,cap:5}};
 const xc=(k,d=day())=>((S.x[d]||{})[k]||0);
 const xTotal=(d=day())=>sum(S.x[d]);
 const cnt=(k,d=day())=>((S.c[d]||{})[k]||0);
@@ -131,7 +131,7 @@ const QUESTS=[
 {id:"pray",t:"Pray 5 extra minutes",ok:()=>S.on.includes("pray"),n:1,v:()=>xc("pray")+cnt("prayed"),r:25},
 {id:"kind",t:"Do an extra act of kindness",ok:()=>S.on.includes("kind"),n:1,v:()=>xc("kind"),r:20},
 {id:"memo",t:"Practice a kept verse",ok:()=>S.verses.length>0,n:1,v:()=>cnt("mq"),r:25},
-{id:"pod",t:"Listen to a podcast",ok:()=>true,n:1,v:()=>xc("pod"),r:20},
+{id:"pod",t:"Listen to a podcast or Christian radio",ok:()=>true,n:1,v:()=>xc("pod"),r:20},
 {id:"devo",t:"Read a devotional",ok:()=>S.on.includes("devo"),n:1,v:()=>+done("devo"),r:20},
 {id:"more3",t:"Go further 3 times",ok:()=>true,n:3,v:()=>xTotal(),r:30},
 {id:"keep",t:"Keep a new verse",ok:()=>true,n:1,v:()=>cnt("kept"),r:15}];
@@ -209,7 +209,7 @@ if(first&&!RM.matches){fl.style.setProperty("--p",0);fl.toggleAttribute("data-ze
 else{fl.style.setProperty("--p",p);fl.toggleAttribute("data-zero",!p)}
 const left=m-n,late=new Date().getHours()>=18,warm=[1,2,3,4,5,6,7].some(o=>lit(day(-o),on)),T=tier(st),any=litAny();
 fl.style.setProperty("--t",T.n);
-$("#hh").textContent=!on.length?"Nothing to light yet":!m?(any?"Bonus heat":"A quiet day"):n==m?"Burning bright":n?`${n} of ${m} lit`:"Strike a match";
+$("#hh").textContent=!on.length?"Nothing to light yet":!m?(any?"Bonus heat":"A quiet day"):n==m?"Burning bright":n?`${n} of ${m} lit`:"Light the first one";
 $("#hs").textContent=!on.length?"Your fire starts with one practice"
 :!m?(st?`${st}-day streak. `:"")+(any?"Everything you lit today is extra.":"Nothing is due today. Light anything to keep your streak.")
 :n==m?(st>1?`${st}-day streak. Everything due today is lit.`:"Everything due today is lit")
@@ -236,16 +236,16 @@ if(on("kind"))R.push(["kind","Log another act of kindness","Every kindness count
 if(on("bible"))R.push(["ch","Read another Bible chapter","Opens the Bible tab"]);
 if(on("devo"))R.push(["devo","Read another devotional","Opens Devos"]);
 R.push(["memo",S.verses.length?"Practice a kept verse":"Keep a verse to memorize",S.verses.length?"Quick memory practice":"Tap any verse in the Bible tab"]);
-R.push(["pod","Listen to a podcast episode","Opens podcasts in Grow"]);
+R.push(["radio","Tune in to Christian radio","Opens the Radio tab"]);R.push(["pod","Listen to a podcast episode","Opens podcasts in Grow"]);
 return `<div class="card list"><h3>Go further</h3><p class="mut" style="margin:0 2px 4px">Each extra earns embers and raises today's multiplier by 0.1×, up to 2×.</p>
-${R.map(([k,t,s])=>`<button class="pl" data-x="${k}"><span class="t"><b>${t}</b><span class="mut">${s}</span></span><span class="pill">+${Math.round(XTRA[k].e*mult())}</span></button>`).join("")}</div>`}
+${R.map(([k,t,s])=>`<button class="pl" data-x="${k}"><span class="t"><b>${t}</b><span class="mut">${s}</span></span><span class="pill">+${Math.round((XTRA[k]||XTRA.pod).e*mult())}</span></button>`).join("")}</div>`}
 function paintGoals(){const g=$("#goals");if(g)g.innerHTML=goalsHTML();const f=$("#further");if(f){f.innerHTML=furtherHTML();bindFurther()}}
 function bindFurther(){$$("[data-x]").forEach(b=>b.onclick=()=>{const k=b.dataset.x;
 if(k=="pray")return prayTimer();
 if(k=="kind"){const r=doMore("kind","kind");if(!r)return toast("That's the most kindness Ember can count today. Keep going anyway.");fx(b.querySelector(".pill"),r);refresh();return}
 if(k=="ch")return go("bible");if(k=="devo")return go("devos");
 if(k=="memo")return S.verses.length?go("grow","memory"):go("bible");
-if(k=="pod")return go("grow","pods")})}
+if(k=="pod")return go("grow","pods");if(k=="radio")return go("radio")})}
 function refresh(){if(tab=="today"){paint();paintGoals()}else if(tab=="jar")jar();chip()}
 
 /* prayer timer */
@@ -348,7 +348,14 @@ $("#cust").onclick=cust;
    Bible
    ========================================================= */
 const BOOKS="Genesis,Exodus,Leviticus,Numbers,Deuteronomy,Joshua,Judges,Ruth,1 Samuel,2 Samuel,1 Kings,2 Kings,1 Chronicles,2 Chronicles,Ezra,Nehemiah,Esther,Job,Psalms,Proverbs,Ecclesiastes,Song of Solomon,Isaiah,Jeremiah,Lamentations,Ezekiel,Daniel,Hosea,Joel,Amos,Obadiah,Jonah,Micah,Nahum,Habakkuk,Zephaniah,Haggai,Zechariah,Malachi,Matthew,Mark,Luke,John,Acts,Romans,1 Corinthians,2 Corinthians,Galatians,Ephesians,Philippians,Colossians,1 Thessalonians,2 Thessalonians,1 Timothy,2 Timothy,Titus,Philemon,Hebrews,James,1 Peter,2 Peter,1 John,2 John,3 John,Jude,Revelation".split(",");
-const TR={web:"World English Bible",kjv:"King James Version",bbe:"Bible in Basic English","oeb-us":"Open English Bible"};
+/* free versions Ember can show (public domain, via bible-api.com): [code, name, language] */
+const TRS=[["web","World English Bible","English"],["kjv","King James Version","English"],["asv","American Standard Version (1901)","English"],["bsb","Berean Standard Bible","English"],["bbe","Bible in Basic English","English"],["darby","Darby Bible","English"],["dra","Douay-Rheims 1899 American Edition","English"],["webbe","World English Bible, British Edition","English"],["oeb-us","Open English Bible, US Edition","English"],["oeb-cw","Open English Bible, Commonwealth Edition","English"],
+["rv1909","Reina Valera 1909","Spanish"],["bes","La Biblia en Español Sencillo","Spanish"],["pddpt","Palabra de Dios para ti","Spanish"],["vbl","Versión Biblia Libre","Spanish"],
+["cherokee","Cherokee New Testament","Other languages"],["cuv-simp","Chinese Union Version (Simplified)","Other languages"],["cuv","Chinese Union Version (Traditional)","Other languages"],["bkr","Bible kralická (Czech)","Other languages"],["danish","Danish Bible","Other languages"],["statenvertaling","Statenvertaling (Dutch)","Other languages"],["biblia","Finnish Bible","Other languages"],["luther1912","Luther Bible 1912 (German)","Other languages"],["leningrad","Hebrew Leningrad Codex","Other languages"],["karoli","Károli Bible (Hungarian)","Other languages"],["riveduta","Riveduta 1924 (Italian)","Other languages"],["bungo","Japanese Bungo (Classical)","Other languages"],["kougo","Japanese Kougo (Colloquial)","Other languages"],["korean","Korean Revised Version","Other languages"],["clementine","Clementine Latin Vulgate","Other languages"],["norwegian","Norwegian Bible","Other languages"],["gdanska","Gdańska Bible (Polish)","Other languages"],["rccv","Romanian Corrected Cornilescu","Other languages"],["synodal","Russian Synodal Translation","Other languages"],["swahili","Swahili Bible","Other languages"],["swedish","Swedish Bible","Other languages"],["tagalog","Ang Dating Biblia (Tagalog)","Other languages"],["cadman","Cadman Bible 1934 (Vietnamese)","Other languages"]];
+const TR=Object.fromEntries(TRS.map(t=>[t[0],t[1]]));
+/* copyrighted versions open on Bible Gateway: [code, name] */
+const BGV=[["NKJV","New King James Version"],["NIV","New International Version"],["AMP","Amplified Bible"],["AMPC","Amplified Bible, Classic Edition"],["ESV","English Standard Version"],["NLT","New Living Translation"],["CSB","Christian Standard Bible"],["NASB","New American Standard Bible"],["NASB1995","New American Standard Bible 1995"],["LSB","Legacy Standard Bible"],["MSG","The Message"],["TPT","The Passion Translation"],["NRSVUE","New Revised Standard Version, Updated Edition"],["RSV","Revised Standard Version"],["NET","New English Translation"],["CEB","Common English Bible"],["CEV","Contemporary English Version"],["GNT","Good News Translation"],["NCV","New Century Version"],["NIRV","New International Reader's Version"],["ERV","Easy-to-Read Version"],["ICB","International Children's Bible"],["TLB","The Living Bible"],["NLV","New Life Version"],["MEV","Modern English Version"],["KJ21","21st Century King James Version"],["AKJV","Authorized (King James) Version"],["EXB","Expanded Bible"],["VOICE","The Voice"],["PHILLIPS","J.B. Phillips New Testament"],["CJB","Complete Jewish Bible"],["TLV","Tree of Life Version"],["NOG","Names of God Bible"],["LEB","Lexham English Bible"],["ISV","International Standard Version"],["NCB","New Catholic Bible"],["NABRE","New American Bible, Revised Edition"],["RSVCE","Revised Standard Version Catholic Edition"],["NRSVCE","New Revised Standard Version Catholic Edition"],["RVR1960","Reina-Valera 1960 (Spanish)"],["NVI","Nueva Versión Internacional (Spanish)"],["NTV","Nueva Traducción Viviente (Spanish)"],["LBLA","La Biblia de las Américas (Spanish)"]];
+const bgUrl=code=>`https://www.biblegateway.com/passage/?search=${encodeURIComponent(S.book+" "+S.ch)}&version=${code}`;
 const CHL=`<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,CHR=CHL.replace("M15 5l-7 7 7 7","M9 5l7 7-7 7");
 const EXT=`<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M17 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 /* reading button: light it, then add more readings, then counted */
@@ -370,14 +377,20 @@ if(markId)$("#mk").onclick=e=>{const b=e.currentTarget;let res=null;const rd=S.r
 if(!done(markId)){res=toggle(markId);rd.push(R)}else if(!counted(R)){const g=extra(XK[markId]);rd.push(R);res=g?{g}:null;if(!g)toast("You've hit today's limit for extra readings. Keep reading anyway.")}
 save();b.setAttribute("aria-pressed","true");b.innerHTML=lb(markId,R);if(res)fx(b.querySelector(".ring"),res)};return j}
 catch(e){el.innerHTML=`<p class="err">Couldn't read ${esc(ref)}. Try again.</p>`;return null}}
+function trOptions(){const favs=TRS.filter(t=>isFav("tr:"+t[0])),o=t=>`<option value="${t[0]}" ${t[0]==S.tr?"selected":""}>${esc(t[1])}</option>`;
+return (favs.length?`<optgroup label="Your favorites">${favs.map(o).join("")}</optgroup>`:"")+["English","Spanish","Other languages"].map(g=>`<optgroup label="${g}">${TRS.filter(t=>t[2]==g).map(o).join("")}</optgroup>`).join("")}
+function bgChips(){const f=BGV.filter(v=>isFav("bg:"+v[0]));return f.length?f.map(([c,n])=>`<a class="chip" href="${bgUrl(c)}" target="_blank" rel="noopener" data-earn="ch" title="${esc(n)}">${c}</a>`).join(""):`<p class="mut" style="margin:0">Tap the ember beside any version below to pin it here.</p>`}
+function otherVersions(){return `<h3>Other versions</h3><p class="mut" style="margin:0 2px 8px">NKJV, NIV, Amplified and other modern versions are copyrighted, so they open this chapter on Bible Gateway. Reading there still lights your Bible reading.</p>
+<div class="chips2" data-strip="bgchips">${bgChips()}</div>
+<details><summary>All ${BGV.length} versions</summary>${BGV.map(([c,n])=>`<div class="h fp"><span class="t"><b>${esc(n)}</b><span class="mut">${c}</span></span>${favBtn("bg:"+c,n)}<a class="pill" href="${bgUrl(c)}" target="_blank" rel="noopener" data-earn="ch">Open</a></div>`).join("")}</details>`}
 function bible(){
 $("#main").innerHTML=`<section class="band"><div class="bt"><button class="nb" id="pv" aria-label="Previous chapter">${CHL}</button><h2 id="ref" aria-live="polite">${esc(S.book)} ${S.ch}</h2><button class="nb" id="nx" aria-label="Next chapter">${CHR}</button></div>
 <div class="ctl"><select id="bk" aria-label="Book">${BOOKS.map(b=>`<option ${b==S.book?"selected":""}>${b}</option>`).join("")}</select><input id="ch" type="number" min="1" inputmode="numeric" value="${S.ch}" aria-label="Chapter">
-<select id="tr" aria-label="Translation">${Object.entries(TR).map(([k,v])=>`<option value="${k}" ${k==S.tr?"selected":""}>${v}</option>`).join("")}</select></div></section><div class="card" id="txt"></div>`;
-const load=async dir=>{S.book=$("#bk").value;S.ch=Math.max(1,+$("#ch").value||1);$("#ch").value=S.ch;S.tr=$("#tr").value;save();$("#ref").textContent=`${S.book} ${S.ch}`;
+<div class="trrow"><select id="tr" aria-label="Translation">${trOptions()}</select><span id="trf">${favBtn("tr:"+S.tr,TR[S.tr])}</span></div></div></section><div class="card" id="txt"></div><div class="card list" id="ov">${otherVersions()}</div>`;
+const load=async dir=>{S.book=$("#bk").value;S.ch=Math.max(1,+$("#ch").value||1);$("#ch").value=S.ch;S.tr=$("#tr").value;save();$("#ref").textContent=`${S.book} ${S.ch}`;$("#trf").innerHTML=favBtn("tr:"+S.tr,TR[S.tr]);
 let j=await fetchPassage(`${S.book} ${S.ch}`,S.tr,$("#txt"),"bible",false);
 if(j==="nf"&&dir>0){const i=BOOKS.indexOf(S.book);if(i<65){S.book=BOOKS[i+1];S.ch=1;$("#bk").value=S.book;$("#ch").value=1;save();$("#ref").textContent=`${S.book} 1`;j=await fetchPassage(`${S.book} 1`,S.tr,$("#txt"),"bible",false)}}
-if(j&&j!=="nf")$("#ref").textContent=j.reference};
+if(j&&j!=="nf")$("#ref").textContent=j.reference;$("#ov").innerHTML=otherVersions()};
 $("#bk").onchange=()=>{$("#ch").value=1;load(0)};$("#ch").onchange=()=>load(0);$("#tr").onchange=()=>load(0);
 $("#pv").onclick=()=>{$("#ch").value=Math.max(1,$("#ch").value-1);load(-1)};$("#nx").onclick=()=>{$("#ch").value=+$("#ch").value+1;load(1)};load(0)}
 
@@ -389,17 +402,45 @@ const PLANS=[
 ["Proverbs: wisdom for the day","One chapter a day, restarting each month.",`Proverbs ${dom}`],
 ["Psalms: pray the prayers","Cycle through all 150 psalms over the year.",`Psalm ${doy%150+1}`],
 ["Gospel of John","Meet Jesus, one chapter at a time.",`John ${doy%21+1}`],
+["Gospel of Mark","The shortest gospel, full of action.",`Mark ${doy%16+1}`],
 ["Sermon on the Mount","Matthew 5 to 7, a core text for living it out.",`Matthew ${5+doy%3}`],
 ["Romans: the gospel explained","A chapter a day through Paul's big argument.",`Romans ${doy%16+1}`],
-["Acts: the early church","How the first believers lived and shared their faith.",`Acts ${doy%28+1}`]];
+["Acts: the early church","How the first believers lived and shared their faith.",`Acts ${doy%28+1}`],
+["Genesis: beginnings","Creation, the fall, and God's promise to Abraham.",`Genesis ${doy%50+1}`],
+["Psalms of Ascent","Songs pilgrims sang on the road to Jerusalem.",`Psalm ${120+doy%15}`],
+["Isaiah: comfort my people","Hope and promise from Isaiah 40 to 66.",`Isaiah ${40+doy%27}`],
+["Ephesians: who you are in Christ","Six chapters on grace, identity and the church.",`Ephesians ${doy%6+1}`],
+["Philippians: joy","Paul's letter of joy, written from prison.",`Philippians ${doy%4+1}`],
+["James: faith that works","Practical wisdom for everyday faith.",`James ${doy%5+1}`],
+["1 John: walking in love","Assurance, light and love.",`1 John ${doy%5+1}`]];
+/* free devotional websites: [id, name, description, url, group] */
+const DEVLINKS=[
+["odb","Our Daily Bread","A short reading, scripture and reflection each day","https://www.odb.org/","Daily devotionals"],
+["utmost","My Utmost for His Highest","Oswald Chambers' classic, one entry a day","https://utmost.org/","Daily devotionals"],
+["solidjoys","Solid Joys","John Piper's short daily devotional from Desiring God","https://www.desiringgod.org/solidjoys","Daily devotionals"],
+["heartlight","Heartlight","Eleven free daily devotionals","https://heartlight.org/devotionals","Daily devotionals"],
+["intouch","In Touch Daily Devotions","Charles Stanley and In Touch Ministries","https://www.intouch.org/","Daily devotionals"],
+["upperroom","The Upper Room","A daily devotional written by readers around the world","https://www.upperroom.org/","Daily devotionals"],
+["p31","Proverbs 31 Ministries","Encouragement for Today, written for women","https://proverbs31.org/read/devotions","Daily devotionals"],
+["crosswalk","Crosswalk devotionals","Dozens of free daily devotionals","https://www.crosswalk.com/devotionals/","Daily devotionals"],
+["bgdev","Bible Gateway devotionals","Daily devotionals from many authors","https://www.biblegateway.com/devotionals/","Daily devotionals"],
+["youversion","YouVersion reading plans","Thousands of free plans on every topic","https://www.bible.com/reading-plans","Reading plans and apps"],
+["studylight","StudyLight devotionals","37 free devotionals, classic and modern","https://www.studylight.org/devotionals/","Reading plans and apps"],
+["morneve","Spurgeon's Morning and Evening","Charles Spurgeon's classic, twice a day","https://www.ccel.org/ccel/spurgeon/morneve","Classics"],
+["ccel","Christian Classics Ethereal Library","Centuries of Christian writing, free to read","https://ccel.org","Classics"],
+["pray","Pray as You Go","Daily guided prayer with music and scripture","https://pray-as-you-go.org/","Catholic and liturgical"],
+["usccb","Daily Mass readings","Today's readings from the USCCB","https://bible.usccb.org/","Catholic and liturgical"]];
 const Q=["What does this passage say about who God is?","What is one thing to believe, change, or do today?","Who could you pray for or encourage because of this?"];
-function devos(){
-$("#main").innerHTML=`<section class="band"><h2>Devotionals</h2><p>Pick a plan. Each one gives you a chapter for today, chosen by the date. Read more than one to add embers.</p></section>
-<div class="card list">${PLANS.map((p,i)=>`<button class="pl" data-p="${i}"><span class="t"><b>${p[0]}</b><span class="mut">${p[1]}</span></span><span class="pill">${p[2]}</span></button>`).join("")}</div>
+async function openPlan(i){const p=PLANS[i],el=$("#dv");if(!el)return;$$("[data-p]").forEach(x=>x.toggleAttribute("aria-current",x.dataset.p==i));el.hidden=false;el.scrollIntoView({behavior:RM.matches?"auto":"smooth",block:"start"});
+const j=await fetchPassage(p[2],S.tr,el,"devo");if(j&&j!=="nf")el.insertAdjacentHTML("beforeend",`<h3 class="sub serif">Let it simmer</h3><ol>${Q.map(q=>`<li>${q}</li>`).join("")}</ol>`)}
+function devos(){const G2=[...new Set(DEVLINKS.map(d=>d[4]))];
+$("#main").innerHTML=`<section class="band"><h2>Devotionals</h2><p>Reading plans you can read right here, plus free devotionals from around the web. Tap the ember to keep your favorites at the top.</p></section>
+<div class="card list"><h3>Your favorites</h3><div data-strip="plan:,dev:">${stripHTML(["plan:","dev:"])}</div></div>
+<div class="card list"><h3>Reading plans</h3><p class="mut" style="margin:0 2px 4px">Each gives you a chapter for today, chosen by the date. Read more than one to add embers.</p>${PLANS.map((p,i)=>`<div class="h prow"><button class="pl" data-p="${i}"><span class="t"><b>${p[0]}</b><span class="mut">${p[1]}</span></span><span class="pill">${p[2]}</span></button>${favBtn("plan:"+i,p[0])}</div>`).join("")}</div>
 <div class="card" id="dv" hidden></div>
-<div class="card list"><h3>More free classics</h3><a class="lk" href="https://ccel.org" target="_blank" rel="noopener"><span class="t"><b>Christian Classics Ethereal Library</b><span class="mut">Centuries of Christian writing, free to read</span></span>${EXT}</a><a class="lk" href="https://www.biblegateway.com/devotionals/" target="_blank" rel="noopener"><span class="t"><b>Bible Gateway devotionals</b><span class="mut">Daily devotionals from many authors</span></span>${EXT}</a></div>`;
-$$("[data-p]").forEach(b=>b.onclick=async()=>{const p=PLANS[b.dataset.p],el=$("#dv");$$("[data-p]").forEach(x=>x.removeAttribute("aria-current"));b.setAttribute("aria-current","true");el.hidden=false;el.scrollIntoView({behavior:RM.matches?"auto":"smooth",block:"start"});
-const j=await fetchPassage(p[2],S.tr,el,"devo");if(j&&j!=="nf")el.insertAdjacentHTML("beforeend",`<h3 class="sub serif">Let it simmer</h3><ol>${Q.map(q=>`<li>${q}</li>`).join("")}</ol>`)})}
+${G2.map(g=>`<div class="card list"><h3>${g}</h3>${DEVLINKS.filter(d=>d[4]==g).map(([id,n,s2,u])=>`<div class="h"><a class="t lk2" href="${u}" target="_blank" rel="noopener" data-earn="devo"><b>${esc(n)}</b><span class="mut">${esc(s2)}</span></a>${favBtn("dev:"+id,n)}<a class="pill" href="${u}" target="_blank" rel="noopener" data-earn="devo">Read</a></div>`).join("")}</div>`).join("")}
+<p class="mut" style="margin:0 4px 14px">Devotional sites open in your browser. Opening one lights Devotionals for today.</p>`;
+$$("[data-p]").forEach(b=>b.onclick=()=>openPlan(+b.dataset.p))}
 
 /* =========================================================
    Church
@@ -437,6 +478,10 @@ const POD={
 "Lutheran":["Issues, Etc.","The Lutheran Hour","The Bible Project"],
 "Orthodox":["Ancient Faith Today","Lord Have Mercy","Ancient Faith Radio"],
 "Anglican / Episcopal":["Mere Fidelity","Ask NT Wright Anything","The Bible Project"]};
+/* Featured podcasts with direct links: [name, who, Apple Podcasts, Spotify] */
+const FEAT=[
+["HTB Church","Holy Trinity Brompton, London","https://podcasts.apple.com/podcast/id1351338998","https://open.spotify.com/show/6TQUDmNb3SxZ4IwN45NYNw"],
+["The Crazy Love Podcast","Francis Chan and friends, Crazy Love Ministries","https://podcasts.apple.com/podcast/id1007053996","https://open.spotify.com/show/34HxTaXogxr7FHDdkebrM9"]];
 function memoryHTML(){return `<div class="card list" id="memory"><h3>Memory verses</h3>${S.verses.length?`<p class="mut" style="margin:0 2px 4px">Fill in the blanks from memory. Each verse you know earns embers.</p>`+S.verses.map((v,i)=>`<button class="pl" data-mv="${i}"><span class="t"><b>${esc(v.r)}</b><span class="mut clamp">${esc(v.t)}</span></span><span class="pill">Practice</span></button>`).join(""):`<p class="mut" style="margin:0 2px 14px">Tap any verse in the Bible or Devos tab to keep it here for practice.</p>`}</div>`}
 function quiz(i){const v=S.verses[i];if(!v)return;const D=$("#dlg"),w=v.t.split(" "),R=Math.random()<.5?0:1;let k=0;
 const html=w.map(x=>{const core=x.replace(/[^A-Za-z']/g,"");if(core.length>3&&(k++%2==R))return `<span class="blank" style="width:${Math.max(3,core.length)*.62}em" aria-label="blank"></span>${esc(x.slice(x.indexOf(core)+core.length))}`;return esc(x)}).join(" ");
@@ -452,19 +497,107 @@ function grow(section){
 $("#main").innerHTML=`<section class="band"><h2>Grow</h2><p>Memory verses, practical guides for serving and sharing your faith, and podcasts from your tradition.</p></section>
 ${memoryHTML()}
 <div class="card list"><h3>Guides</h3>${G.map(g=>`<details><summary>${g[0]}</summary><ul>${g[1].map(x=>`<li>${x}</li>`).join("")}</ul></details>`).join("")}</div>
-<div class="card list" id="pods"><h3>Podcasts</h3><label class="mut" for="dn" style="margin:0 2px">Your tradition</label><select id="dn">${Object.keys(POD).map(k=>`<option ${k==S.denom?"selected":""}>${k}</option>`).join("")}</select><div id="po"></div><p class="mut" style="margin:6px 2px 14px">Each opens a search in Apple Podcasts and adds embers, up to 3 episodes a day. Compare what you hear with what your own pastor teaches.</p></div>`;
+<div class="card list" id="pods"><h3>Podcasts</h3><h4 class="ph">Your favorites</h4><div data-strip="pod:">${stripHTML(["pod:"])}</div>
+<h4 class="ph">Featured</h4>${FEAT.map(([n,w])=>podRow("pod:"+n)).join("")}
+<h4 class="ph">From your tradition</h4><label class="mut" for="dn" style="margin:0 2px">Your tradition</label><select id="dn">${Object.keys(POD).map(k=>`<option ${k==S.denom?"selected":""}>${k}</option>`).join("")}</select><div id="po"></div><p class="mut" style="margin:6px 2px 14px">Listening adds embers, up to 3 a day across podcasts and radio. Tradition picks open a search in Apple Podcasts. Compare what you hear with what your own pastor teaches.</p></div>`;
 $$("[data-mv]").forEach(b=>b.onclick=()=>quiz(+b.dataset.mv));
-const pods=()=>{$("#po").innerHTML=POD[S.denom].map(p=>`<a class="lk" target="_blank" rel="noopener" href="https://podcasts.apple.com/us/search?term=${encodeURIComponent(p)}"><span class="t"><b>${esc(p)}</b></span><span class="pill">Listen</span></a>`).join("");
-$$("#po a").forEach(a=>a.addEventListener("click",()=>{const g=extra("pod");if(g){fx(a.querySelector(".pill"),{g});toast(`+${g} embers. Enjoy the episode.`)}}))};
+const pods=()=>{$("#po").innerHTML=POD[S.denom].map(p=>podRow("pod:"+p)).join("")};
 $("#dn").onchange=e=>{S.denom=e.target.value;save();pods()};pods();
 if(section){const el=document.getElementById(section);if(el)el.scrollIntoView({block:"start"})}}
 
 /* =========================================================
+   Radio
+   ========================================================= */
+/* [id, name, description, official site, group] */
+const RADIO=[
+["klove","K-LOVE","America's largest Christian music network","https://www.klove.com/","Contemporary Christian"],
+["air1","Air1","Worship music around the clock","https://www.air1.com/","Worship and praise"],
+["wayfm","WAY-FM","Christian hits for families","https://www.wayfm.com/","Contemporary Christian"],
+["joyfm","The Joy FM","Florida's Christian music station","https://www.thejoyfm.com/","Contemporary Christian"],
+["ksbj","KSBJ 89.3","Houston, Texas","https://www.ksbj.org/","Contemporary Christian"],
+["wgts","WGTS 91.9","Washington, D.C.","https://www.wgts919.com/","Contemporary Christian"],
+["z88","Z88.3","Orlando, Florida","https://www.z88.fm/","Contemporary Christian"],
+["flr","Family Life Radio","Christian music and encouragement","https://www.myflr.org/","Contemporary Christian"],
+["praise","Premier Praise","Worship music from the UK","https://premierchristianradio.com/how-to-listen/","Worship and praise"],
+["livingworship","Living Worship Radio","24/7 worship from Orlando, Florida","https://livingworship.radio/","Worship and praise"],
+["worshiplive","Worship Live 24/7","Nonstop praise and worship","https://www.worshiplive.com/","Worship and praise"],
+["abiding","Abiding Radio","Hymns, sacred and instrumental music","https://www.abidingradio.com/","Hymns and sacred music"],
+["bbn","Bible Broadcasting Network","Hymns, Bible teaching and sacred music","https://www.bbnradio.org/","Hymns and sacred music"],
+["moody","Moody Radio","Bible teaching, talk and music","https://www.moodyradio.org/","Teaching and talk"],
+["afr","American Family Radio","Talk, teaching and inspirational music","https://www.afr.net/","Teaching and talk"],
+["premier","Premier Christian Radio","News, teaching and music from London","https://premierchristianradio.com/how-to-listen/","Teaching and talk"],
+["holyculture","Holy Culture Radio","Christian hip-hop and R&P","https://holyculture.net/","Gospel and hip-hop"],
+["pgospel","Premier Gospel","Gospel music from the UK","https://premierchristianradio.com/how-to-listen/","Gospel and hip-hop"],
+["radiou","RadioU","Christian rock, alternative and hip-hop","https://radiou.com/","Rock and alternative"],
+["crnet","ChristianRock.Net","Internet-only Christian rock","https://www.christianrock.net/","Rock and alternative"],
+["relevant","Relevant Radio","Catholic talk and prayer","https://relevantradio.com/","Catholic"],
+["ewtn","EWTN Radio","Global Catholic radio","https://www.ewtn.com/radio","Catholic"],
+["avemaria","Ave Maria Radio","Catholic talk radio","https://avemariaradio.net/","Catholic"],
+["radiomaria","Radio Maria USA","Catholic prayer and teaching","https://www.radiomaria.us/","Catholic"],
+["afrorth","Ancient Faith Radio","Orthodox Christian music and talk","https://www.ancientfaith.com/","Orthodox"],
+["nuevavida","Radio Nueva Vida","Música cristiana y enseñanza bíblica","https://www.radionuevavida.com/","En español"],
+["ucb","UCB","Christian radio across the UK","https://www.ucb.co.uk/","Around the world"],
+["crossrhythms","Cross Rhythms","Christian music from the UK","https://www.crossrhythms.co.uk/","Around the world"],
+["hope","Hope 103.2","Sydney, Australia","https://hope1032.com.au/","Around the world"],
+["vision","Vision Christian Radio","Australia-wide","https://vision.org.au/","Around the world"],
+["lifefm","Life FM","New Zealand","https://www.lifefm.co.nz/","Around the world"],
+["chvn","CHVN","Winnipeg, Canada","https://www.chvnradio.com/","Around the world"]];
+/* artist radio inside streaming apps: [artist, description] */
+const ARTISTS=[["Hillsong UNITED","Youthful worship from Sydney, Australia"],["Hillsong Worship","Worship anthems from Hillsong Church"],["Hillsong Young & Free","Upbeat worship from Hillsong's youth"],["Bethel Music","Worship collective from Redding, California"],["Bethel Live","Bethel Music's live worship recordings"],["Jesus Culture","Worship born out of a youth revival"],["Elevation Worship","Worship from Elevation Church"],["Maverick City Music","Gospel-infused worship collective"],["Passion","Worship from the Passion student gatherings"],["Planetshakers","High-energy worship from Melbourne"],["Brandon Lake","Worship leader and songwriter"],["Forrest Frank","Feel-good Christian pop"]];
+const aKey=n=>"radio:a-"+n.toLowerCase().replace(/[^a-z0-9]+/g,"-");
+function radio(){const G3=[...new Set(RADIO.map(r=>r[4]))];
+$("#main").innerHTML=`<section class="band"><h2>Christian radio</h2><p>${RADIO.length} stations and ${ARTISTS.length} worship artist radios, from worship and hymns to hip-hop, Catholic and Orthodox. Each opens the station's own site to listen live.</p></section>
+<div class="card list"><h3>Your favorites</h3><div data-strip="radio:">${stripHTML(["radio:"])}</div></div>
+${G3.map(g=>`<div class="card list"><h3>${g}</h3>${RADIO.filter(r=>r[4]==g).map(r=>podRow("radio:"+r[0])).join("")}</div>`+(g=="Worship and praise"?`<div class="card list"><h3>Worship artist radio</h3><p class="mut" style="margin:0 2px 4px">Each opens the artist in Spotify or YouTube Music. Tap the artist's Radio there for nonstop music from them and similar artists.</p>${ARTISTS.map(([n])=>podRow(aKey(n))).join("")}</div>`:"")).join("")}
+<div class="card list"><a class="lk" href="https://tunein.com/search/?query=christian%20radio" target="_blank" rel="noopener"><span class="t"><b>Find more on TuneIn</b><span class="mut">Thousands of Christian stations worldwide</span></span>${EXT}</a></div>
+<p class="mut" style="margin:0 4px 14px">Listening adds embers, up to 3 a day across radio and podcasts.</p>`}
+
+/* =========================================================
+   Favorites: tap the ember to keep something at the top
+   ========================================================= */
+if(!S.fav)S.fav=[];
+const isFav=k=>S.fav.includes(k);
+const favBtn=(k,label)=>`<button class="fav" data-fav="${esc(k)}" aria-pressed="${isFav(k)}" aria-label="Favorite: ${esc(label||k)}" title="Favorite">${glyph()}</button>`;
+const ITEMS={};
+RADIO.forEach(([id,n,s2,u])=>ITEMS["radio:"+id]={n,s:s2,links:[["Listen",u]],earn:"pod"});
+ARTISTS.forEach(([n,d])=>ITEMS[aKey(n)]={n:n+" Radio",s:d,links:[["Spotify",`https://open.spotify.com/search/${encodeURIComponent(n)}`],["YouTube",`https://music.youtube.com/search?q=${encodeURIComponent(n+" radio")}`]],earn:"pod"});
+FEAT.forEach(([n,w,a,sp])=>ITEMS["pod:"+n]={n,s:w,links:[["Apple",a],["Spotify",sp]],earn:"pod"});
+Object.values(POD).flat().forEach(n=>{if(!ITEMS["pod:"+n])ITEMS["pod:"+n]={n,s:"Search in Apple Podcasts",links:[["Listen",`https://podcasts.apple.com/us/search?term=${encodeURIComponent(n)}`]],earn:"pod"}});
+DEVLINKS.forEach(([id,n,s2,u])=>ITEMS["dev:"+id]={n,s:s2,links:[["Read",u]],earn:"devo"});
+PLANS.forEach((p,i)=>ITEMS["plan:"+i]={n:p[0],s:`Today: ${p[2]}`,act:()=>openPlan(i)});
+BGV.forEach(([c,n])=>ITEMS["bg:"+c]={n,s:c});TRS.forEach(([c,n])=>ITEMS["tr:"+c]={n,s:"Free in Ember"});
+function podRow(k){const it=ITEMS[k];if(!it)return"";return `<div class="h fp"><span class="t"><b>${esc(it.n)}</b><span class="mut">${esc(it.s)}</span></span>${favBtn(k,it.n)}<span class="pb">${it.links.map(([l,u])=>`<a class="pill" href="${u}" target="_blank" rel="noopener" data-earn="${it.earn}" aria-label="${esc(it.n)}: ${l}">${l}</a>`).join("")}</span></div>`}
+function stripHTML(prefixes){const ks=S.fav.filter(k=>prefixes.some(p=>k.startsWith(p))&&ITEMS[k]);
+if(!ks.length)return `<p class="mut" style="margin:4px 2px 12px">Tap the ember ${glyph()} beside anything to keep it here.</p>`.replace(glyph(),`<span class="inl">${glyph()}</span>`);
+return ks.map(k=>{const it=ITEMS[k];return it.act?`<div class="h fp"><button class="pl" data-act="${esc(k)}"><span class="t"><b>${esc(it.n)}</b><span class="mut">${esc(it.s)}</span></span><span class="pill">Read</span></button>${favBtn(k,it.n)}</div>`:podRow(k)}).join("")}
+function renderStrips(){$$("[data-strip]").forEach(el=>{const t=el.dataset.strip;el.innerHTML=t=="bgchips"?bgChips():stripHTML(t.split(","))});const tr=$("#tr");if(tr)tr.innerHTML=trOptions()}
+function toggleFav(k){const on=!isFav(k);S.fav=on?[...S.fav,k]:S.fav.filter(x=>x!=k);save();
+$$(".fav").forEach(b=>{if(b.dataset.fav==k){b.setAttribute("aria-pressed",on);if(on&&!RM.matches&&b.animate)b.animate([{transform:"scale(1)"},{transform:"scale(1.35)"},{transform:"scale(1)"}],{duration:350})}});
+renderStrips();const it=ITEMS[k];toast(on?`${it?it.n:"Added"} is now a favorite.`:`Removed ${it?it.n:"it"} from favorites.`)}
+/* one listener for favorites, favorite shortcuts, and links that earn embers */
+document.addEventListener("click",e=>{
+const f=e.target.closest(".fav");if(f){e.preventDefault();toggleFav(f.dataset.fav);return}
+const ac=e.target.closest("[data-act]");if(ac){const it=ITEMS[ac.dataset.act];if(it&&it.act)it.act();return}
+const a=e.target.closest("a[data-earn]");if(!a)return;const k=a.dataset.earn;let res=null;
+if(k=="pod"){const g=extra("pod");if(g){res={g};toast(`+${g} embers. Enjoy listening.`)}}
+else if(k=="devo")res=doMore("devo","devo");
+else if(k=="ch"){const R=`${S.book} ${S.ch}`,rd=S.read[day()]||(S.read[day()]=[]);if(!done("bible")){res=toggle("bible");rd.push(R)}else if(!counted(R)){const g=extra("ch");rd.push(R);res=g?{g}:null}save()}
+if(res)fx(a,res)});
+
+/* =========================================================
    Router
    ========================================================= */
-const TABS=[["today","Today",today],["jar","Jar",jar],["bible","Bible",bible],["devos","Devos",devos],["church","Church",church],["grow","Grow",grow]];
+/* tab icons: simple line drawings, 24x24 */
+const ICON={today:'<path d="M12 3c1.6 3.6 6 5.6 6 11a6 6 0 0 1-12 0c0-3 1.8-5 3.4-6.6.3 2 1.4 3.1 2.6 3.1-1-3 0-5.5 0-7.5z"/>',
+jar:'<path d="M8 3h8v3H8z"/><path d="M7.5 6h9c1.6 1 2.5 2.6 2.5 4.5V18a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-7.5C5 8.6 5.9 7 7.5 6z"/><path d="M9 14.5a3 3 0 0 0 6 0"/>',
+bible:'<path d="M6 3.5h11.5v14H7.5A1.5 1.5 0 0 0 6 19z"/><path d="M6 19a1.5 1.5 0 0 0 1.5 1.5h10v-3"/><path d="M11.75 6.5v7M9.25 9h5"/>',
+devos:'<path d="M4 10h12v3.5A5.5 5.5 0 0 1 10.5 19h-1A5.5 5.5 0 0 1 4 13.5z"/><path d="M16 11.5h1.25a2.25 2.25 0 0 1 0 4.5H15.5"/><path d="M8 3.5c0 1.5 1 1.5 1 3M12 3.5c0 1.5 1 1.5 1 3"/>',
+radio:'<rect x="3.5" y="9" width="17" height="11" rx="2.5"/><path d="M7 9l9.5-5"/><circle cx="8.5" cy="14.5" r="2"/><path d="M13.5 13h4M13.5 16h4"/>',
+grow:'<path d="M12 21v-9"/><path d="M12 12c0-4 3-6.5 7.5-6.5 0 4-3 6.5-7.5 6.5z"/><path d="M12 14.5c0-3.2-2.5-5.5-6.5-5.5 0 3.2 2.5 5.5 6.5 5.5z"/>',
+church:'<path d="M12 2.5v4M10 4.5h4"/><path d="M5 21v-9.5l7-5 7 5V21z"/><path d="M10 21v-3.5a2 2 0 0 1 4 0V21"/>'};
+const TABS=[["today","Today",today],["jar","Jar",jar],["bible","Bible",bible],["devos","Devos",devos],["radio","Radio",radio],["grow","Grow",grow],["church","Church",church]];
 let tab="today";
-$("#nav").innerHTML=TABS.map(t=>`<button role="tab" data-n="${t[0]}">${t[1]}</button>`).join("");
+$("#nav").innerHTML=TABS.map(t=>`<button role="tab" data-n="${t[0]}"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[t[0]]}</svg></span><span class="lb">${t[1]}</span></button>`).join("");
 function go(n,section){tab=n;$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.n==n));$("#main").scrollTop=0;TABS.find(t=>t[0]==n)[2](section)}
 $$("#nav button").forEach(b=>b.onclick=()=>go(b.dataset.n));
 guard();chip();go("today");rewards();
