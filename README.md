@@ -1,4 +1,4 @@
-# Ember (beta version)
+# Ember (beta)
 "Keep your faith fire lit"
 
 Ember is a free web app for growing in faith: a flame that grows as you light daily practices, streaks and an ember jar, the Bible in dozens of versions with free commentaries, devotionals, classic Christian books, podcasts, Christian radio, memory verses and more. It runs in the browser and can be added to a phone's home screen like an app.

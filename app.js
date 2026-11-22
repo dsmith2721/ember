@@ -380,7 +380,7 @@ text="I've been using Ember to keep my faith fire lit: Bible reading, prayer, de
 msg=`${text} ${url}`,ways=shareWays(url,title,text,msg);
 const D=$("#dlg");
 D.innerHTML=`<h2 class="serif">Share Ember</h2><p class="mut">Send a friend the link. It opens a page that shows them how to put Ember on their phone.</p>
-${navigator.share?`<button class="btn wide" id="shn">${SHARE_ICON}<span>Share with any app</span></button>`:""}
+${navigator.share?`<button class="btn wide" id="shn">${SHARE_ICON}<span>Light someone's fire</span></button>`:""}
 <div class="ways">${ways.map(([n,k,h,d])=>`<a class="way" href="${esc(h)}" data-kind="${k}" data-app="${n}" ${h.startsWith("http")?'target="_blank" rel="noopener"':""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg><span>${n}</span></a>`).join("")}</div>
 <div class="linkrow"><input id="shl" value="${esc(url)}" readonly aria-label="Ember link"><button class="btn ghost" id="shc">Copy link</button></div>
 <p class="mut" id="shm" aria-live="polite" style="min-height:1.4em;margin:6px 0 0"></p><p><button class="btn ghost" id="shx">Close</button></p>`;
