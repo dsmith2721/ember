@@ -1,0 +1,471 @@
+"use strict";
+/* =========================================================
+   Ember: keep your faith fire lit
+   ========================================================= */
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const HABITS=[
+["bible","Bible reading","Your list"],["study","Bible study","Your list"],["pray","Prayer","Your list"],["fast","Fasting","Your list"],["tithe","Tithing","Your list"],["devo","Devotionals","Your list"],["sun","Sunday service","Your list"],["mid","Mid-week service","Your list"],["lead","Leading a small group","Your list"],["vol","Volunteering","Your list"],["miss","Missions trip","Your list"],["testi","Giving testimony","Your list"],["wn","Witnessing: neighbors","Your list"],["wf","Witnessing: friends","Your list"],["ws","Witnessing: strangers","Your list"],
+["journal","Gratitude journaling","Suggested"],["memo","Scripture memory","Suggested"],["worship","Worship time","Suggested"],["kind","Act of kindness","Suggested"],["acct","Accountability check-in","Suggested"],["sabbath","Sabbath rest","Suggested"],["host","Hospitality: meal with someone","Suggested"],["forgive","Forgiveness or reconciliation","Suggested"]];
+
+/* ---------- Saved state ---------- */
+let S;try{S=JSON.parse(localStorage.getItem("ember"))}catch(e){}
+S=Object.assign({on:["bible","pray","devo","sun"],log:{},tithe:"",links:[],denom:"Nondenominational / Evangelical",tr:"web",book:"John",ch:1,
+earn:{},x:{},c:{},spent:0,fz:0,frozen:[],shieldWk:"",ms:[],goal:100,verses:[],rolled:{},read:{},boost:0,sabDay:0,best:0,jarFull:[],q:null},S||{});
+const save=()=>{try{localStorage.setItem("ember",JSON.stringify(S))}catch(e){}};
+const day=(o=0)=>{const d=new Date();d.setDate(d.getDate()+o);return d.toLocaleDateString("en-CA")};
+const done=(id,d=day())=>(S.log[d]||[]).includes(id);
+const name=id=>(HABITS.find(h=>h[0]==id)||[,id])[1];
+const RM=matchMedia("(prefers-reduced-motion: reduce)");
+const fmt=n=>Math.round(n).toLocaleString();
+/* keep per-day scratch data to today only */
+for(const k of ["rolled","read"]){const t=S[k][day()];S[k]={};if(t)S[k][day()]=t}
+
+/* ---------- Flame shapes ---------- */
+const FP="M256 70C300 150 390 190 390 310C390 395 330 450 256 450C182 450 122 395 122 310C122 250 160 215 190 180C195 220 215 235 230 235C215 170 235 120 256 70Z";
+const CP="M256 235C285 280 320 300 320 350C320 392 292 420 256 420C220 420 192 392 192 350C192 310 225 290 256 235Z";
+const MINI="M12 1C14 6 20 9 20 17C20 23 16 27 12 27C8 27 4 23 4 17C4 13 6 11 8 9C8 12 10 13 11 13C10 9 11 5 12 1Z";
+const SHIELD="M12 2l8 3v6c0 5-3.4 9-8 11-4.6-2-8-6-8-11V5z";
+const glyph=(c="currentColor")=>`<svg viewBox="0 0 24 28" aria-hidden="true"><path d="${MINI}" fill="${c}"/></svg>`;
+const shield=(on=true)=>`<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${SHIELD}" fill="${on?"#8FC9FF":"none"}" stroke="${on?"#8FC9FF":"currentColor"}" stroke-width="2" stroke-linejoin="round" opacity="${on?1:.45}"/></svg>`;
+
+/* ---------- Streaks, fuel, protection ---------- */
+const FUEL={sun:3,lead:2,miss:4,forgive:2};          /* how much each practice grows the flame */
+const fuel=id=>FUEL[id]||1;
+const lit=(d,ids)=>ids.some(i=>done(i,d));
+/* ---------- Schedules: how often each practice happens ----------
+   f: daily | weekly | biweekly | monthly | anytime
+   d: day of week (0 = Sunday) for weekly/biweekly, day of month for monthly
+   a: a Monday in an "on" week, for every-other-week practices */
+const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const SCHED={sun:{f:"weekly",d:0},mid:{f:"weekly",d:3},lead:{f:"weekly",d:2},tithe:{f:"weekly",d:0},sabbath:{f:"weekly",d:0},
+acct:{f:"anytime"},host:{f:"anytime"},forgive:{f:"anytime"},miss:{f:"anytime"}};
+const FREQ=[["daily","Every day"],["weekly","Once a week"],["biweekly","Every other week"],["monthly","Once a month"],["anytime","Whenever it happens"]];
+if(!S.sched)S.sched={};
+const sch=id=>Object.assign({f:"daily"},SCHED[id],S.sched[id]);
+const DT=d=>new Date(d+"T12:00");
+const ds=t=>t.toLocaleDateString("en-CA");
+const addD=(d,n)=>{const t=DT(d);t.setDate(t.getDate()+n);return ds(t)};
+const monday=d=>addD(d,-((DT(d).getDay()+6)%7));
+const wkIdx=(s,d)=>Math.round((DT(monday(d))-DT(s.a||"2026-01-05"))/6048e5);
+function pkey(id,d){const s=sch(id);switch(s.f){case"weekly":return monday(d);case"biweekly":return"b"+Math.floor(wkIdx(s,d)/2);case"monthly":return d.slice(0,7);default:return d}}
+const periodic=id=>["weekly","biweekly","monthly"].includes(sch(id).f);
+function isDue(id,d){const s=sch(id),t=DT(d);switch(s.f){case"daily":return true;case"weekly":return t.getDay()==s.d;
+case"biweekly":return t.getDay()==s.d&&((wkIdx(s,d)%2)+2)%2==0;
+case"monthly":{const last=new Date(t.getFullYear(),t.getMonth()+1,0).getDate();return t.getDate()==Math.min(s.d||1,last)}
+default:return false}}
+/* lit earlier in the same week or month (so it isn't owed again) */
+function doneEarlier(id,d){if(!periodic(id))return false;const k=pkey(id,d);let x=addD(d,-1);for(let i=0;i<31&&pkey(id,x)==k;i++,x=addD(x,-1))if(done(id,x))return true;return false}
+/* the practices that count on a given day */
+const expected=(d=day())=>S.on.filter(id=>isDue(id,d)&&!doneEarlier(id,d));
+/* flame size: lit fuel / expected fuel. Off-schedule practices add bonus heat. */
+const heat=(ids,d=day())=>{const t=expected(d).filter(i=>ids.includes(i)).reduce((a,i)=>a+fuel(i),0),n=ids.filter(i=>done(i,d)).reduce((a,i)=>a+fuel(i),0);return Math.min(1,t?n/t:n?1:0)};
+const isSab=d=>S.on.includes("sabbath")&&sch("sabbath").f=="weekly"&&DT(d).getDay()==sch("sabbath").d;
+const UNIT={weekly:"week",biweekly:"two weeks",monthly:"month"};
+/* streak in weeks or months for scheduled practices; the current period never breaks it */
+function pstreak(id){let d=day(),c=0;for(let i=0;i<120;i++){const k=pkey(id,d);let has=false,x=d;for(let j=0;j<31&&pkey(id,x)==k;j++,x=addD(x,-1))if(done(id,x))has=true;if(has)c++;else if(i)break;d=x}return c}
+function dueText(id){for(let i=0;i<70;i++){const d=day(i);if(isDue(id,d)){if(!i)return"Due today";if(i==1)return"Due tomorrow";const t=DT(d);return i<7?`Due ${DOW[t.getDay()]}`:`Due ${t.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})}`}}return""}
+function yearCount(id){const y=String(new Date().getFullYear());return Object.entries(S.log).filter(([d,a])=>d.startsWith(y)&&a.includes(id)).length}
+function metaFor(id){const s=sch(id);
+if(s.f=="daily"){const n=streak([id]);return n?`${n}-day streak`:"Ready to light"}
+if(s.f=="anytime"){if(done(id))return"Lit today. Bonus heat!";const n=yearCount(id);return n?`Lit ${n} time${n>1?"s":""} this year`:"Whenever it happens"}
+const n=pstreak(id),u=s.f=="monthly"?"month":s.f=="weekly"?"week":"time";
+if(done(id))return n>1?`${n} ${u}s in a row`:"Lit today";
+if(doneEarlier(id,day()))return`Lit this ${UNIT[s.f]}`+(n>1?`. ${n} ${u}s in a row`:"");
+return dueText(id)+(n?`. ${n} ${u}${n>1?"s":""} in a row`:"")}
+const safe=d=>S.frozen.includes(d)||isSab(d);   /* frozen or Sabbath days never break a streak */
+function streakInfo(ids){if(!ids.length)return{c:0};let o=lit(day(),ids)?0:1,c=0,start=null,g=0;
+while(g++<4000){const d=day(-o);if(lit(d,ids)){c++;start=d}else if(!safe(d))break;o++}return{c,start}}
+const streak=ids=>streakInfo(ids).c;
+const TIERS=[[100,"Beacon"],[30,"Bonfire"],[14,"Blaze"],[7,"Steady flame"],[3,"Kindling"],[1,"Spark"]];
+function tier(st){const i=TIERS.findIndex(t=>st>=t[0]);return i<0?{n:0}:{n:6-i,name:TIERS[i][1],next:TIERS[i-1]}}
+
+/* =========================================================
+   Ember economy
+   ========================================================= */
+const sum=o=>Object.values(o||{}).reduce((a,b)=>a+b,0);
+const balance=()=>Object.values(S.earn).reduce((a,e)=>a+sum(e),0)-S.spent;
+const monthKey=(d=day())=>d.slice(0,7);
+const monthEarned=(m=monthKey())=>Object.entries(S.earn).filter(([d])=>d.startsWith(m)).reduce((a,[,e])=>a+sum(e),0);
+const JAR=2500,JAR_BONUS=250,FREEZE_COST=200,FREEZE_MAX=2;
+const TMULT=[1,1,1.1,1.2,1.3,1.5,2];   /* streak level multipliers: none, Spark, Kindling, Steady flame, Blaze, Bonfire, Beacon */
+const XTRA={ /* going further: embers each, and a daily cap */
+ch:{t:"Read another Bible chapter",e:6,cap:10},pray:{t:"Pray 5 more minutes",e:8,cap:12},kind:{t:"Another act of kindness",e:8,cap:10},
+memo:{t:"Practice a kept verse",e:6,cap:10},pod:{t:"Listen to a podcast episode",e:6,cap:3},devo:{t:"Read another devotional",e:6,cap:5}};
+const xc=(k,d=day())=>((S.x[d]||{})[k]||0);
+const xTotal=(d=day())=>sum(S.x[d]);
+const cnt=(k,d=day())=>((S.c[d]||{})[k]||0);
+const bump=k=>{const C=S.c[day()]||(S.c[day()]={});C[k]=(C[k]||0)+1;save()};
+const boosted=()=>S.boost>Date.now();
+function mult(){return Math.round((1+Math.min(1,xTotal()*.1))*TMULT[tier(streak(S.on)).n]*(boosted()?2:1)*100)/100}
+function earn(key,base,useMult=true){const E=S.earn[day()]||(S.earn[day()]={});if(key in E)return 0;const a=Math.max(1,Math.round(base*(useMult?mult():1)));E[key]=a;save();return a}
+function unearn(key){const E=S.earn[day()];if(E&&key in E){delete E[key];save()}}
+/* embers that count toward the daily goal: everything except goal, quest, milestone and jar rewards */
+const goalEmbers=()=>Object.entries(S.earn[day()]||{}).filter(([k])=>!/^(q:|goal|m:|jar)/.test(k)).reduce((a,[,v])=>a+v,0);
+
+/* light or unlight a practice */
+function toggle(id){const d=day(),a=S.log[d]||(S.log[d]=[]);const i=a.indexOf(id);
+if(i<0){a.push(id);save();const g=earn("lit:"+id,10*fuel(id));return{g,b:surprise(id)}}
+a.splice(i,1);unearn("lit:"+id);save();return null}
+const mark=id=>done(id)?null:toggle(id);
+function extra(k){const X=S.x[day()]||(S.x[day()]={});if((X[k]||0)>=XTRA[k].cap)return 0;X[k]=(X[k]||0)+1;save();return earn(`x:${k}:${X[k]}`,XTRA[k].e)}
+/* do a practice: lights it first, then counts extras */
+function doMore(id,k){if(id&&S.on.includes(id)&&!done(id))return toggle(id);const g=extra(k);return g?{g}:null}
+
+/* surprise bonuses: rolled once per practice per day */
+const GUSTS=["A gust of wind fanned your flame.","You found a glowing coal.","A stray spark caught.","Fresh kindling!","Someone threw another log on your fire."];
+function surprise(id){const r=S.rolled[day()]||(S.rolled[day()]=[]);if(r.includes(id))return null;r.push(id);save();const x=Math.random();
+if(x<.04){S.boost=Date.now()+15*6e4;save();return"Wildfire! Double embers for the next 15 minutes."}
+if(x<.15){const n=15+Math.floor(Math.random()*26);earn("b:"+Date.now(),n,false);return`${GUSTS[Math.floor(Math.random()*GUSTS.length)]} +${n} embers`}
+return null}
+
+/* daily goals: three a day, picked once and kept */
+const litN=()=>expected().filter(i=>done(i)).length;
+const litAny=()=>S.on.filter(i=>done(i)).length;
+const allLit=()=>{const e=expected();return e.length>0&&e.every(i=>done(i))};
+const QUESTS=[
+{id:"light2",t:"Light 2 practices",ok:()=>S.on.length>=2,n:2,v:litAny,r:20},
+{id:"all",t:"Light everything due today",ok:()=>expected().length>=2,n:1,v:()=>+allLit(),r:40},
+{id:"ch2",t:"Read 2 Bible chapters",ok:()=>S.on.includes("bible"),n:2,v:()=>+done("bible")+xc("ch"),r:25},
+{id:"pray",t:"Pray 5 extra minutes",ok:()=>S.on.includes("pray"),n:1,v:()=>xc("pray")+cnt("prayed"),r:25},
+{id:"kind",t:"Do an extra act of kindness",ok:()=>S.on.includes("kind"),n:1,v:()=>xc("kind"),r:20},
+{id:"memo",t:"Practice a kept verse",ok:()=>S.verses.length>0,n:1,v:()=>cnt("mq"),r:25},
+{id:"pod",t:"Listen to a podcast",ok:()=>true,n:1,v:()=>xc("pod"),r:20},
+{id:"devo",t:"Read a devotional",ok:()=>S.on.includes("devo"),n:1,v:()=>+done("devo"),r:20},
+{id:"more3",t:"Go further 3 times",ok:()=>true,n:3,v:()=>xTotal(),r:30},
+{id:"keep",t:"Keep a new verse",ok:()=>true,n:1,v:()=>cnt("kept"),r:15}];
+const hash=s=>{let h=2166136261;for(const c of s)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0};
+function todayQuests(){if(!S.q||S.q.d!==day()){const pool=QUESTS.filter(q=>q.ok()).sort((a,b)=>hash(day()+a.id)-hash(day()+b.id));S.q={d:day(),ids:pool.slice(0,3).map(q=>q.id)};save()}
+return S.q.ids.map(id=>QUESTS.find(q=>q.id==id)).filter(Boolean)}
+const claimed=k=>k in (S.earn[day()]||{});
+
+/* streak milestones: [days, embers, gives a streak freeze] */
+const MILES=[[3,30],[7,70,1],[14,150],[30,300,1],[50,500],[100,1000,1],[365,3650,1]];
+
+/* check and pay out every reward that has been reached */
+function rewards(){const out=[];
+for(const q of todayQuests())if(q.v()>=q.n&&!claimed("q:"+q.id)){earn("q:"+q.id,q.r,false);out.push(`Goal complete: ${q.t}. +${q.r} embers`)}
+if(goalEmbers()>=S.goal&&!claimed("goal")){earn("goal",20,false);out.push("Daily ember goal met! +20 embers")}
+const {c:st,start}=streakInfo(S.on);if(st>S.best)S.best=st;
+for(const [m,r,f] of MILES)if(st>=m&&!S.ms.includes(start+":"+m)){S.ms.push(start+":"+m);earn(`m:${m}:${start}`,r,false);let gift="";if(f&&S.fz<FREEZE_MAX){S.fz++;gift=" and a streak freeze"}out.push(`${m}-day streak! +${r} embers${gift}`)}
+const mk=monthKey();if(monthEarned()>=JAR&&!S.jarFull.includes(mk)){S.jarFull.push(mk);earn("jar",JAR_BONUS,false);out.push(`Your jar is full! +${JAR_BONUS} embers`)}
+save();out.forEach(toast);chip();return out.length}
+
+/* weekly free freeze, and freezes used automatically for missed days */
+function weekKey(){const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7));return d.toLocaleDateString("en-CA")}
+function guard(){const notes=[];
+if(S.shieldWk!==weekKey()){const first=!S.shieldWk;S.shieldWk=weekKey();if(S.fz<FREEZE_MAX){S.fz++;notes.push(first?"You start with a streak freeze. It protects your streak if you miss a day.":"Shield your flame: a free streak freeze arrived for this week.")}}
+let o=1;const gap=[];while(o<60){const d=day(-o);if(lit(d,S.on)||safe(d))break;gap.push(d);o++}
+if(gap.length&&o<60){const before=day(-o);const had=lit(before,S.on)||S.frozen.includes(before);
+if(had&&S.fz>=gap.length){S.fz-=gap.length;S.frozen.push(...gap);notes.push(gap.length>1?`${gap.length} streak freezes kept your streak safe.`:"A streak freeze kept your streak safe yesterday.")}}
+save();notes.forEach(toast)}
+
+/* ---------- Feedback: toast, floating numbers, embers ---------- */
+const TQ=[];let tBusy=false;
+function toast(m){TQ.push(m);if(!tBusy)nextToast()}
+function nextToast(){const t=$("#toast"),m=TQ.shift();if(!m){tBusy=false;t.classList.remove("on");return}tBusy=true;t.textContent=m;t.classList.add("on");setTimeout(()=>{t.classList.remove("on");setTimeout(nextToast,200)},TQ.length>1?1500:2600)}
+function plus(el,n){if(!n||!el)return;const r=el.getBoundingClientRect(),e=document.createElement("span");e.className="plus";e.textContent="+"+n;e.style.left=r.left+r.width/2+"px";e.style.top=r.top+"px";document.body.appendChild(e);
+if(RM.matches||!e.animate){setTimeout(()=>e.remove(),900);return}e.animate([{transform:"translate(-50%,0)",opacity:1},{transform:"translate(-50%,-46px)",opacity:0}],{duration:1100,easing:"cubic-bezier(.2,.7,.4,1)"}).onfinish=()=>e.remove()}
+function burst(el,N=12,H=90){if(!el||RM.matches||!el.animate)return;const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+for(let i=0;i<N;i++){const e=document.createElement("i");e.className="emb";e.style.left=x+"px";e.style.top=y+"px";document.body.appendChild(e);
+const dx=(Math.random()-.5)*(N>12?200:70),dy=-60-Math.random()*H,sc=.4+Math.random()*.9;
+e.animate([{transform:`translate(0,0) scale(${sc})`,opacity:1},{transform:`translate(${dx}px,${dy}px) scale(0)`,opacity:0}],{duration:700+Math.random()*500,easing:"cubic-bezier(.2,.7,.4,1)"}).onfinish=()=>e.remove()}}
+/* show the result of earning: embers, +number, surprise, rewards */
+function fx(el,res,n=12){if(!res)return;burst(el,n);plus(el,res.g);if(res.b)toast(res.b);rewards();chip()}
+function chip(){const b=$("#bal");b.innerHTML=`${glyph()}<span>${fmt(balance())}</span>`;b.setAttribute("aria-label",`Ember jar: ${fmt(balance())} embers`);
+if(!RM.matches&&b.animate)b.animate([{transform:"scale(1)"},{transform:"scale(1.12)"},{transform:"scale(1)"}],{duration:350})}
+$("#bal").onclick=()=>go("jar");
+
+/* =========================================================
+   Today
+   ========================================================= */
+function flame(){return `<div class="fl"><svg viewBox="0 0 200 240" aria-hidden="true"><defs>
+<radialGradient id="gl" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#FF8A3D" stop-opacity=".6"/><stop offset=".55" stop-color="#F5B042" stop-opacity=".14"/><stop offset="1" stop-color="#F5B042" stop-opacity="0"/></radialGradient>
+<linearGradient id="fo" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FF7A2E"/><stop offset=".55" stop-color="#F5B042"/><stop offset="1" stop-color="#FFD98A"/></linearGradient></defs>
+<circle class="glow" cx="100" cy="150" r="110" fill="url(#gl)"/>
+<ellipse cx="100" cy="228" rx="38" ry="5" fill="#000" opacity=".3"/>
+<g class="body"><g transform="translate(-40.8 -22.5) scale(.55)"><path class="outer" d="${FP}" fill="url(#fo)"/><path class="core" d="${CP}" fill="#FFF3DC"/></g></g></svg></div>`}
+const mini=f=>`<svg viewBox="0 0 24 28" aria-hidden="true"><path d="${MINI}" transform="translate(12 27) scale(${(.4+.6*f).toFixed(2)}) translate(-12 -27)" fill="${f?"#F5B042":"#4A3866"}" opacity="${f?(.5+.5*f).toFixed(2):1}"/></svg>`;
+const row=(id,o)=>`<button class="hr" data-t="${id}" ${o?'data-o="1"':""} aria-pressed="false"><span class="ring">${glyph()}</span><span class="t"><b>${esc(name(id))}</b><span class="mut" data-s></span></span><span class="gain" data-g></span></button>`;
+function today(){
+const on=S.on,ex=expected(),rest=on.filter(i=>!ex.includes(i));
+$("#main").innerHTML=`<section class="hero2"><p class="dt">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</p>${flame()}<h2 class="big" id="hh"></h2><p class="hs" id="hs"></p><p class="tier" id="tier" hidden></p><div class="wk" id="wk" role="img"></div></section>
+<div class="sheet">${!on.length?`<div class="empty"><p>Pick the practices that keep your fire going this season.</p><button class="btn" onclick="cust()">Choose practices</button></div>`
+:ex.length?ex.map(id=>row(id)).join(""):`<div class="empty"><p>Nothing is due today. Anything you light below is bonus heat.</p></div>`}</div>
+${rest.length?`<div class="card list"><h3>Also on your list</h3><p class="mut" style="margin:0 2px 4px">Weekly, monthly and whenever-it-happens practices. Lighting one counts for its week or month and adds bonus heat today.</p>${rest.map(id=>row(id,1)).join("")}</div>`:""}
+<div id="goals"></div><div id="further"></div>`;
+$$(".hr").forEach(b=>b.onclick=()=>{const id=b.dataset.t;
+if(!done(id)&&doneEarlier(id,day())){toast(`${name(id)} is already lit this ${UNIT[sch(id).f]}. ${dueText(id).replace("Due","Next one is due")}.`);return}
+const t0=tier(streak(S.on)).n,a0=allLit();const res=toggle(id);paint();chip();
+if(!res){paintGoals();return}
+fx(b.querySelector(".ring"),res,12*fuel(id));
+if(!a0&&allLit())burst($(".fl svg"),34,170);else if(tier(streak(S.on)).n>t0)burst($(".fl svg"),22,130);
+paint();paintGoals()});
+paint(true);paintGoals()}
+function paint(first){
+const on=S.on,ex=expected(),m=ex.length,n=litN(),p=heat(on),st=streak(on),fl=$(".fl");if(!fl)return;
+if(first&&!RM.matches){fl.style.setProperty("--p",0);fl.toggleAttribute("data-zero",true);requestAnimationFrame(()=>requestAnimationFrame(()=>{fl.style.setProperty("--p",p);fl.toggleAttribute("data-zero",!p)}))}
+else{fl.style.setProperty("--p",p);fl.toggleAttribute("data-zero",!p)}
+const left=m-n,late=new Date().getHours()>=18,warm=[1,2,3,4,5,6,7].some(o=>lit(day(-o),on)),T=tier(st),any=litAny();
+fl.style.setProperty("--t",T.n);
+$("#hh").textContent=!on.length?"Nothing to light yet":!m?(any?"Bonus heat":"A quiet day"):n==m?"Burning bright":n?`${n} of ${m} lit`:"Strike a match";
+$("#hs").textContent=!on.length?"Your fire starts with one practice"
+:!m?(st?`${st}-day streak. `:"")+(any?"Everything you lit today is extra.":"Nothing is due today. Light anything to keep your streak.")
+:n==m?(st>1?`${st}-day streak. Everything due today is lit.`:"Everything due today is lit")
+:st&&!any?`${st}-day streak. `+(isSab(day())?"It's your Sabbath, so your streak is safe today.":late?"Light one before midnight to keep it.":"Light one to keep it going.")
+:st?`${st}-day streak`+(late?`. The night's still young: ${left} left to light.`:"")
+:warm?"The embers are still warm. Rekindle today."
+:"Tap a practice below to light it";
+const tv=$("#tier");tv.hidden=!T.n;if(T.n)tv.innerHTML=`<b>${T.name}</b>`+(T.next?`<span>${T.next[0]-st} more day${T.next[0]-st>1?"s":""} to ${T.next[1]}</span>`:`<span>As bright as it gets</span>`);
+const W=[6,5,4,3,2,1,0].map(o=>{const d=new Date();d.setDate(d.getDate()-o);const k=day(-o),e=expected(k),c=e.filter(i=>done(i,k)).length;return{o,f:heat(on,k),c,m:e.length,full:e.length&&c==e.length,ice:S.frozen.includes(k),l:d.toLocaleDateString(undefined,{weekday:"narrow"}),w:d.toLocaleDateString(undefined,{weekday:"long"})}});
+$("#wk").setAttribute("aria-label","Last 7 days: "+W.map(x=>`${x.w} ${x.ice?"protected by a streak freeze":x.c+" of "+x.m}`).join(", "));
+$("#wk").innerHTML=W.map(x=>`<div class="${x.o?"":"now"} ${x.full?"full":""}">${x.ice&&!x.f?`<span class="icon-ice">${shield()}</span>`:mini(x.f)}<span>${x.l}</span></div>`).join("");
+$$(".hr").forEach(b=>{const id=b.dataset.t,blocked=!done(id)&&doneEarlier(id,day());b.setAttribute("aria-pressed",done(id));b.classList.toggle("held",blocked);b.querySelector("[data-s]").textContent=metaFor(id);
+const g=(S.earn[day()]||{})["lit:"+id];b.querySelector("[data-g]").innerHTML=g?`+${g}`:blocked?"":`<span class="mut">${Math.round(10*fuel(id)*mult())}</span>`})}
+
+/* goals and going further (shared by Today and Jar) */
+function goalsHTML(){const e=goalEmbers(),pct=Math.min(100,e/S.goal*100),qs=todayQuests();
+return `<div class="card"><div class="gh"><h3>Today's goals</h3><span class="pill" title="Today's ember multiplier">${mult()}× embers${boosted()?" (Wildfire)":""}</span></div>
+<div class="eg"><div class="row" style="justify-content:space-between"><span>Daily ember goal</span><b>${fmt(Math.min(e,S.goal))} / ${fmt(S.goal)}</b></div><div class="bar" role="progressbar" aria-label="Daily ember goal" aria-valuemin="0" aria-valuemax="${S.goal}" aria-valuenow="${Math.min(e,S.goal)}"><i style="width:${pct}%"></i></div></div>
+${qs.map(q=>{const v=Math.min(q.v(),q.n),ok=claimed("q:"+q.id);return `<div class="qr ${ok?"ok":""}"><span class="qc" aria-hidden="true">${ok?glyph():""}</span><span class="t">${q.t}${q.n>1?` <span class="mut">${v}/${q.n}</span>`:""}</span><span class="rw">${ok?"Done":"+"+q.r}</span></div>`}).join("")}
+<p class="mut" style="margin:10px 0 0">New goals every day at midnight.</p></div>`}
+function furtherHTML(){const R=[];const on=i=>S.on.includes(i);
+if(on("pray"))R.push(["pray","Pray 5 more minutes","Starts a 5-minute prayer timer"]);
+if(on("kind"))R.push(["kind","Log another act of kindness","Every kindness counts"]);
+if(on("bible"))R.push(["ch","Read another Bible chapter","Opens the Bible tab"]);
+if(on("devo"))R.push(["devo","Read another devotional","Opens Devos"]);
+R.push(["memo",S.verses.length?"Practice a kept verse":"Keep a verse to memorize",S.verses.length?"Quick memory practice":"Tap any verse in the Bible tab"]);
+R.push(["pod","Listen to a podcast episode","Opens podcasts in Grow"]);
+return `<div class="card list"><h3>Go further</h3><p class="mut" style="margin:0 2px 4px">Each extra earns embers and raises today's multiplier by 0.1×, up to 2×.</p>
+${R.map(([k,t,s])=>`<button class="pl" data-x="${k}"><span class="t"><b>${t}</b><span class="mut">${s}</span></span><span class="pill">+${Math.round(XTRA[k].e*mult())}</span></button>`).join("")}</div>`}
+function paintGoals(){const g=$("#goals");if(g)g.innerHTML=goalsHTML();const f=$("#further");if(f){f.innerHTML=furtherHTML();bindFurther()}}
+function bindFurther(){$$("[data-x]").forEach(b=>b.onclick=()=>{const k=b.dataset.x;
+if(k=="pray")return prayTimer();
+if(k=="kind"){const r=doMore("kind","kind");if(!r)return toast("That's the most kindness Ember can count today. Keep going anyway.");fx(b.querySelector(".pill"),r);refresh();return}
+if(k=="ch")return go("bible");if(k=="devo")return go("devos");
+if(k=="memo")return S.verses.length?go("grow","memory"):go("bible");
+if(k=="pod")return go("grow","pods")})}
+function refresh(){if(tab=="today"){paint();paintGoals()}else if(tab=="jar")jar();chip()}
+
+/* prayer timer */
+let ptI=null;
+function prayTimer(){const D=$("#dlg");clearInterval(ptI);let end=0;
+D.innerHTML=`<h2 class="serif">Five more minutes</h2><p class="mut">Set your phone down and pray. Ember will let you know when time's up.</p><p class="clock" id="clk" aria-live="off">5:00</p><div class="row"><button class="btn" id="pst">Start</button><button class="btn ghost" id="pcx">Close</button></div>`;
+D.showModal();
+$("#pcx").onclick=()=>{clearInterval(ptI);D.close()};
+$("#pst").onclick=()=>{end=Date.now()+5*6e4;$("#pst").disabled=true;$("#pst").textContent="Praying…";
+ptI=setInterval(()=>{const l=Math.max(0,end-Date.now()),sec=Math.ceil(l/1e3);$("#clk").textContent=`${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`;
+if(!l){clearInterval(ptI);$("#clk").textContent="Amen";const b=$("#pst");b.disabled=false;b.textContent="Finish";b.onclick=()=>{bump("prayed");const r=doMore("pray","pray");D.close();if(r)fx($("#bal"),r);else{rewards();toast("Prayer time logged.")}refresh()}}},250)}}
+
+/* =========================================================
+   Jar: the reward hub
+   ========================================================= */
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function jarSVG(fill){const R=rng(7),dots=[];for(let r=0;r<10;r++)for(let c=0;c<6;c++)dots.push([46+c*13.6+(R()-.5)*7+(r%2?6:0),182-r*12.2+(R()-.5)*5,3.4+R()*2.6]);
+const k=Math.round(Math.min(1,fill)*dots.length);
+return `<svg class="jar" viewBox="0 0 170 210" role="img" aria-label="Jar ${Math.round(Math.min(1,fill)*100)} percent full"><defs><radialGradient id="eg"><stop offset="0" stop-color="#FFE3A3"/><stop offset=".5" stop-color="#F5B042"/><stop offset="1" stop-color="#FF7A2E"/></radialGradient>
+<clipPath id="jc"><path d="M46 42h78v10c18 8 26 22 26 40v88c0 14-10 22-24 22H44c-14 0-24-8-24-22V92c0-18 8-32 26-40z"/></clipPath></defs>
+<rect x="40" y="18" width="90" height="22" rx="6" fill="#4A3866"/><rect x="40" y="18" width="90" height="7" rx="3.5" fill="#5D4880"/>
+<g clip-path="url(#jc)"><rect x="0" y="0" width="170" height="210" fill="#ffffff08"/>${dots.slice(0,k).map(([x,y,r],i)=>`<circle class="jd" style="--d:${i*12}ms" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="url(#eg)"/>`).join("")}</g>
+<path d="M46 42h78v10c18 8 26 22 26 40v88c0 14-10 22-24 22H44c-14 0-24-8-24-22V92c0-18 8-32 26-40z" fill="none" stroke="#FFF3DC" stroke-opacity=".5" stroke-width="3"/>
+<path d="M34 100v70" stroke="#FFF3DC" stroke-opacity=".25" stroke-width="5" stroke-linecap="round"/></svg>`}
+function yearHTML(){const y=new Date().getFullYear(),now=new Date(),M=[];let litDays=0;
+for(let m=0;m<=now.getMonth();m++){const dim=new Date(y,m+1,0).getDate(),cells=[];
+for(let d=1;d<=dim;d++){const dt=new Date(y,m,d);if(dt>now)break;const k=dt.toLocaleDateString("en-CA"),f=heat(S.on,k),ice=S.frozen.includes(k)&&!f;if(f)litDays++;
+cells.push(`<i class="${f?"on":""} ${f==1?"full":""} ${ice?"ice":""}" style="--f:${f.toFixed(2)}" title="${dt.toLocaleDateString(undefined,{month:"short",day:"numeric"})}"></i>`)}
+M.push(`<div class="ym"><span>${new Date(y,m,1).toLocaleDateString(undefined,{month:"short"})}</span>${cells.join("")}</div>`)}
+return `<div class="card"><h3>Year of fire</h3><p class="mut">${litDays} day${litDays==1?"":"s"} lit in ${y}. Brighter dots mean more of your practices lit that day.</p><div class="yr" role="img" aria-label="${litDays} days lit this year">${M.join("")}</div></div>`}
+function jar(){
+const bal=balance(),me=monthEarned(),st=streakInfo(S.on).c,T=tier(st),mn=new Date().toLocaleDateString(undefined,{month:"long"});
+$("#main").innerHTML=`<section class="band jarband">${jarSVG(me/JAR)}<h2>${fmt(bal)}</h2><p class="jl">embers in your jar</p>
+<div class="chips"><span class="pill dark">${mult()}× today</span><span class="pill dark">${shield()} ${S.fz} freeze${S.fz==1?"":"s"}</span></div>
+<p>${me>=JAR?`Your ${mn} jar is full. You earned the ${JAR_BONUS}-ember bonus.`:`${mn}: ${fmt(me)} of ${fmt(JAR)}. Fill the jar this month for ${JAR_BONUS} bonus embers.`}</p></section>
+<div class="card"><h3>Daily ember goal</h3><p class="mut">Pick a pace. Hitting it each day earns 20 bonus embers.</p>
+<div class="seg" role="radiogroup" aria-label="Daily ember goal">${[[50,"Casual"],[100,"Regular"],[150,"Serious"],[250,"Intense"]].map(([v,l])=>`<button role="radio" aria-checked="${S.goal==v}" data-goal="${v}"><b>${l}</b><span>${v}</span></button>`).join("")}</div></div>
+${goalsHTML()}
+<div class="card"><h3>Your streak</h3>
+<div class="sk"><span class="skn">${st}</span><span><b>${st==1?"day":"days"}${T.n?`, ${T.name}`:""}</b><span class="mut">Best: ${S.best} day${S.best==1?"":"s"}. Streak level multiplier: ${TMULT[T.n]}×</span></span></div>
+<div class="fz"><span class="fzi">${[0,1].map(i=>shield(i<S.fz)).join("")}</span><span class="t"><b>Streak freezes: ${S.fz} of ${FREEZE_MAX}</b><span class="mut">Used automatically when you miss a day.</span></span></div>
+<div class="row" style="flex-wrap:wrap"><button class="btn" id="buy" ${S.fz>=FREEZE_MAX||bal<FREEZE_COST?"disabled":""}>Buy a freeze for ${FREEZE_COST} embers</button><button class="btn ghost" id="share">Share your flame</button></div>
+<p class="mut" id="buym" aria-live="polite">${S.fz>=FREEZE_MAX?"You're holding the most freezes you can.":bal<FREEZE_COST?`${fmt(FREEZE_COST-bal)} more embers to buy one.`:""}</p>
+<p class="mut" style="margin:0"><b>Shield your flame:</b> a free freeze arrives every Monday.${S.on.includes("sabbath")?` <b>Sabbath rest</b> is on, so ${DOW[sch("sabbath").d]}s never break your streak.`:""}</p></div>
+<div class="card list"><h3>Streak milestones</h3>${MILES.map(([m,r,f])=>{const got=S.best>=m;return `<div class="qr ${got?"ok":""}"><span class="qc" aria-hidden="true">${got?glyph():""}</span><span class="t">${m}-day streak <span class="mut">${f?"+ a free freeze":""}</span></span><span class="rw">${got?"Reached":"+"+fmt(r)}</span></div>`}).join("")}</div>
+${yearHTML()}
+<div class="card list"><details><summary>How embers work</summary><ul>
+<li>Lighting a practice earns 10 embers times its fuel. Sunday service earns 30, Missions trip 40.</li>
+<li>Going further (extra chapters, prayer time, kindness, verses, podcasts, devotionals) earns 6 to 8 embers each and raises today's multiplier by 0.1×, up to 2×.</li>
+<li>Streak levels multiply everything: Kindling 1.1×, Steady flame 1.2×, Blaze 1.3×, Bonfire 1.5×, Beacon 2×.</li>
+<li>Surprises: sometimes lighting a practice finds bonus embers, or starts a Wildfire with double embers for 15 minutes.</li>
+<li>Daily goals, your ember goal, streak milestones and a full jar all pay bonus embers.</li>
+<li>Unlighting a practice takes its embers back out.</li></ul></details></div>`;
+$$("[data-goal]").forEach(b=>b.onclick=()=>{S.goal=+b.dataset.goal;save();rewards();jar()});
+$("#buy").onclick=()=>{if(S.fz>=FREEZE_MAX||balance()<FREEZE_COST)return;S.spent+=FREEZE_COST;S.fz++;save();toast("Streak freeze ready. Your flame is shielded.");chip();jar()};
+$("#share").onclick=shareFlame}
+
+/* Kindle a friend: a shareable image of your flame */
+async function shareFlame(){const st=streak(S.on),T=tier(st),c=document.createElement("canvas");c.width=1080;c.height=1350;const x=c.getContext("2d");
+try{await document.fonts.load('600 120px "Fraunces"')}catch(e){}
+x.fillStyle="#1A0E2B";x.fillRect(0,0,1080,1350);
+const g=x.createRadialGradient(540,600,20,540,600,520);g.addColorStop(0,"rgba(255,138,61,.55)");g.addColorStop(1,"rgba(255,138,61,0)");x.fillStyle=g;x.fillRect(0,0,1080,1350);
+x.save();x.translate(540-256*1.25,170);x.scale(1.25,1.25);const fg=x.createLinearGradient(0,450,0,70);fg.addColorStop(0,"#FF7A2E");fg.addColorStop(.55,"#F5B042");fg.addColorStop(1,"#FFD98A");x.fillStyle=fg;x.fill(new Path2D(FP));x.fillStyle="#FFF3DC";x.fill(new Path2D(CP));x.restore();
+x.textAlign="center";x.fillStyle="#FFF3DC";x.font='600 132px "Fraunces", Georgia, serif';x.fillText(st?`${st} day${st==1?"":"s"}`:"Just lit",540,920);
+x.fillStyle="#FFD98A";x.font='600 56px "Fraunces", Georgia, serif';x.fillText(T.n?T.name:"A new spark",540,1010);
+x.fillStyle="#B7A6CC";x.font="40px system-ui, sans-serif";x.fillText("Keeping my faith fire lit with Ember",540,1180);
+const msg=st?`I've kept my faith fire lit for ${st} day${st==1?"":"s"} (${T.name}). Want to keep yours lit with me?`:"I'm starting to keep my faith fire lit. Want to join me?";
+const blob=await new Promise(r=>c.toBlob(r,"image/png"));
+try{const f=new File([blob],"ember-flame.png",{type:"image/png"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],text:msg});return}}catch(e){if(e&&e.name=="AbortError")return}
+const url=c.toDataURL("image/png"),D=$("#dlg");
+D.innerHTML=`<h2 class="serif">Share your flame</h2><img src="${url}" alt="Your Ember flame: ${esc(msg)}" style="width:100%;border-radius:14px;margin:10px 0"><p class="mut">${esc(msg)}</p><div class="row" style="flex-wrap:wrap"><button class="btn" id="cpy">Copy message</button><a class="btn ghost" href="${url}" download="ember-flame.png">Save image</a><button class="btn ghost" id="shx">Close</button></div><p class="mut" id="cpm" aria-live="polite"></p>`;
+D.showModal();$("#shx").onclick=()=>D.close();$("#cpy").onclick=async()=>{try{await navigator.clipboard.writeText(msg);$("#cpm").textContent="Copied. Paste it with the image."}catch(e){$("#cpm").textContent="Couldn't copy here. Press and hold the message to copy it."}}}
+
+/* =========================================================
+   Customize
+   ========================================================= */
+function cust(){let h=`<h2 class="serif">What keeps your fire going?</h2><p class="mut">Switch on what fits this season and set how often each one happens. Weekly and monthly practices only count on their day, and whenever-it-happens practices are always a bonus.</p>`;
+const thisOn=id=>{const s=sch(id);return s.f!="biweekly"||((wkIdx(s,day())%2)+2)%2==0};
+for(const g of ["Your list","Suggested"]){h+=`<h3 class="sub">${g}</h3>`;for(const [id,n] of HABITS.filter(x=>x[2]==g)){const s=sch(id),c=S.on.includes(id);
+h+=`<div class="cu"><label class="tog"><input type="checkbox" value="${id}" ${c?"checked":""}>${n}${FUEL[id]?` <span class="mut">${FUEL[id]}× fuel</span>`:""}</label>
+<div class="sch" data-for="${id}" ${c?"":"hidden"}><select data-f aria-label="How often: ${esc(n)}">${FREQ.map(([v,l])=>`<option value="${v}" ${s.f==v?"selected":""}>${l}</option>`).join("")}</select>
+<select data-d aria-label="Which day: ${esc(n)}">${DOW.map((l,i)=>`<option value="${i}" ${(s.d??0)==i?"selected":""}>${l}s</option>`).join("")}</select>
+<label class="dm">Day <input data-m type="number" min="1" max="28" value="${s.f=="monthly"?s.d||1:1}" aria-label="Day of the month: ${esc(n)}"></label>
+<select data-a aria-label="Which weeks: ${esc(n)}"><option value="this" ${thisOn(id)?"selected":""}>Starting this week</option><option value="next" ${thisOn(id)?"":"selected"}>Starting next week</option></select></div></div>`}}
+$("#dlg").innerHTML=h+`<p><button class="btn" id="ok">Save practices</button></p>`;$("#dlg").showModal();
+const vis=box=>{const f=box.querySelector("[data-f]").value;box.querySelector("[data-d]").hidden=!["weekly","biweekly"].includes(f);box.querySelector(".dm").hidden=f!="monthly";box.querySelector("[data-a]").hidden=f!="biweekly"};
+$$("#dlg .sch").forEach(box=>{vis(box);box.querySelector("[data-f]").onchange=()=>vis(box)});
+$$("#dlg .tog input").forEach(i=>i.onchange=()=>{$(`#dlg .sch[data-for="${i.value}"]`).hidden=!i.checked});
+$("#ok").onclick=()=>{S.on=$$("#dlg .tog input:checked").map(i=>i.value);
+for(const box of $$("#dlg .sch")){const id=box.dataset.for;if(!S.on.includes(id))continue;const f=box.querySelector("[data-f]").value,o={f};
+if(f=="weekly"||f=="biweekly")o.d=+box.querySelector("[data-d]").value;
+if(f=="monthly")o.d=Math.min(28,Math.max(1,+box.querySelector("[data-m]").value||1));
+if(f=="biweekly"){const m=monday(day());o.a=box.querySelector("[data-a]").value=="this"?m:addD(m,7)}
+S.sched[id]=o}
+if(sch("sabbath").f=="weekly")S.sabDay=sch("sabbath").d;
+S.q=null;save();$("#dlg").close();go(tab)}}
+$("#cust").onclick=cust;
+
+/* =========================================================
+   Bible
+   ========================================================= */
+const BOOKS="Genesis,Exodus,Leviticus,Numbers,Deuteronomy,Joshua,Judges,Ruth,1 Samuel,2 Samuel,1 Kings,2 Kings,1 Chronicles,2 Chronicles,Ezra,Nehemiah,Esther,Job,Psalms,Proverbs,Ecclesiastes,Song of Solomon,Isaiah,Jeremiah,Lamentations,Ezekiel,Daniel,Hosea,Joel,Amos,Obadiah,Jonah,Micah,Nahum,Habakkuk,Zephaniah,Haggai,Zechariah,Malachi,Matthew,Mark,Luke,John,Acts,Romans,1 Corinthians,2 Corinthians,Galatians,Ephesians,Philippians,Colossians,1 Thessalonians,2 Thessalonians,1 Timothy,2 Timothy,Titus,Philemon,Hebrews,James,1 Peter,2 Peter,1 John,2 John,3 John,Jude,Revelation".split(",");
+const TR={web:"World English Bible",kjv:"King James Version",bbe:"Bible in Basic English","oeb-us":"Open English Bible"};
+const CHL=`<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,CHR=CHL.replace("M15 5l-7 7 7 7","M9 5l7 7-7 7");
+const EXT=`<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M17 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+/* reading button: light it, then add more readings, then counted */
+const XK={bible:"ch",devo:"devo"};
+const counted=ref=>(S.read[day()]||[]).includes(ref);
+function lbState(id,ref){if(!done(id))return["Light today's reading",false];if(!counted(ref))return[id=="bible"?"Add this chapter to your jar":"Add this reading to your jar",true];return["Counted today",true]}
+const lb=(id,ref)=>{const [t]=lbState(id,ref);return `<span class="ring">${glyph()}</span>${t}`};
+const isKept=r=>S.verses.some(v=>v.r==r);
+async function fetchPassage(ref,tr,el,markId,head=true){
+el.innerHTML=`<p class="mut">Turning pages to ${esc(ref)}…</p>`;let r;
+try{r=await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=${tr}`)}catch(e){el.innerHTML=`<p class="err">Couldn't load ${esc(ref)}. Check your connection, then try again.</p>`;return null}
+if(!r.ok){el.innerHTML=`<p class="err">Couldn't find ${esc(ref)}. Try another chapter.</p>`;return "nf"}
+try{const j=await r.json(),R=j.reference;
+const vr=v=>`${v.book_name} ${v.chapter}:${v.verse}`;
+el.innerHTML=`${head?`<h3>${esc(R)}</h3><p class="mut tn">${esc(j.translation_name||TR[tr])}</p>`:""}<p class="mut hint">Tap a verse to keep it for memory practice.</p><div class="verses">${j.verses.map((v,i)=>`<p data-v="${i}" class="${isKept(vr(v))?"kept":""}" tabindex="0" role="button" aria-pressed="${isKept(vr(v))}"><sup>${v.verse}</sup>${esc(v.text.trim())}</p>`).join("")}</div>${markId?`<button class="lightbtn" id="mk" aria-pressed="${done(markId)}">${lb(markId,R)}</button>`:""}`;
+el.querySelectorAll("[data-v]").forEach(p=>{const v=j.verses[p.dataset.v],k=vr(v);const tg=()=>{if(isKept(k)){S.verses=S.verses.filter(x=>x.r!=k);toast(`Removed ${k}.`)}else{S.verses.push({r:k,t:v.text.trim().replace(/\s+/g," ")});bump("kept");toast(`Kept ${k}. Practice it in Grow.`);rewards()}save();p.classList.toggle("kept",isKept(k));p.setAttribute("aria-pressed",isKept(k))};
+p.onclick=tg;p.onkeydown=e=>{if(e.key=="Enter"||e.key==" "){e.preventDefault();tg()}}});
+if(markId)$("#mk").onclick=e=>{const b=e.currentTarget;let res=null;const rd=S.read[day()]||(S.read[day()]=[]);
+if(!done(markId)){res=toggle(markId);rd.push(R)}else if(!counted(R)){const g=extra(XK[markId]);rd.push(R);res=g?{g}:null;if(!g)toast("You've hit today's limit for extra readings. Keep reading anyway.")}
+save();b.setAttribute("aria-pressed","true");b.innerHTML=lb(markId,R);if(res)fx(b.querySelector(".ring"),res)};return j}
+catch(e){el.innerHTML=`<p class="err">Couldn't read ${esc(ref)}. Try again.</p>`;return null}}
+function bible(){
+$("#main").innerHTML=`<section class="band"><div class="bt"><button class="nb" id="pv" aria-label="Previous chapter">${CHL}</button><h2 id="ref" aria-live="polite">${esc(S.book)} ${S.ch}</h2><button class="nb" id="nx" aria-label="Next chapter">${CHR}</button></div>
+<div class="ctl"><select id="bk" aria-label="Book">${BOOKS.map(b=>`<option ${b==S.book?"selected":""}>${b}</option>`).join("")}</select><input id="ch" type="number" min="1" inputmode="numeric" value="${S.ch}" aria-label="Chapter">
+<select id="tr" aria-label="Translation">${Object.entries(TR).map(([k,v])=>`<option value="${k}" ${k==S.tr?"selected":""}>${v}</option>`).join("")}</select></div></section><div class="card" id="txt"></div>`;
+const load=async dir=>{S.book=$("#bk").value;S.ch=Math.max(1,+$("#ch").value||1);$("#ch").value=S.ch;S.tr=$("#tr").value;save();$("#ref").textContent=`${S.book} ${S.ch}`;
+let j=await fetchPassage(`${S.book} ${S.ch}`,S.tr,$("#txt"),"bible",false);
+if(j==="nf"&&dir>0){const i=BOOKS.indexOf(S.book);if(i<65){S.book=BOOKS[i+1];S.ch=1;$("#bk").value=S.book;$("#ch").value=1;save();$("#ref").textContent=`${S.book} 1`;j=await fetchPassage(`${S.book} 1`,S.tr,$("#txt"),"bible",false)}}
+if(j&&j!=="nf")$("#ref").textContent=j.reference};
+$("#bk").onchange=()=>{$("#ch").value=1;load(0)};$("#ch").onchange=()=>load(0);$("#tr").onchange=()=>load(0);
+$("#pv").onclick=()=>{$("#ch").value=Math.max(1,$("#ch").value-1);load(-1)};$("#nx").onclick=()=>{$("#ch").value=+$("#ch").value+1;load(1)};load(0)}
+
+/* =========================================================
+   Devotionals
+   ========================================================= */
+const doy=Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/864e5),dom=new Date().getDate();
+const PLANS=[
+["Proverbs: wisdom for the day","One chapter a day, restarting each month.",`Proverbs ${dom}`],
+["Psalms: pray the prayers","Cycle through all 150 psalms over the year.",`Psalm ${doy%150+1}`],
+["Gospel of John","Meet Jesus, one chapter at a time.",`John ${doy%21+1}`],
+["Sermon on the Mount","Matthew 5 to 7, a core text for living it out.",`Matthew ${5+doy%3}`],
+["Romans: the gospel explained","A chapter a day through Paul's big argument.",`Romans ${doy%16+1}`],
+["Acts: the early church","How the first believers lived and shared their faith.",`Acts ${doy%28+1}`]];
+const Q=["What does this passage say about who God is?","What is one thing to believe, change, or do today?","Who could you pray for or encourage because of this?"];
+function devos(){
+$("#main").innerHTML=`<section class="band"><h2>Devotionals</h2><p>Pick a plan. Each one gives you a chapter for today, chosen by the date. Read more than one to add embers.</p></section>
+<div class="card list">${PLANS.map((p,i)=>`<button class="pl" data-p="${i}"><span class="t"><b>${p[0]}</b><span class="mut">${p[1]}</span></span><span class="pill">${p[2]}</span></button>`).join("")}</div>
+<div class="card" id="dv" hidden></div>
+<div class="card list"><h3>More free classics</h3><a class="lk" href="https://ccel.org" target="_blank" rel="noopener"><span class="t"><b>Christian Classics Ethereal Library</b><span class="mut">Centuries of Christian writing, free to read</span></span>${EXT}</a><a class="lk" href="https://www.biblegateway.com/devotionals/" target="_blank" rel="noopener"><span class="t"><b>Bible Gateway devotionals</b><span class="mut">Daily devotionals from many authors</span></span>${EXT}</a></div>`;
+$$("[data-p]").forEach(b=>b.onclick=async()=>{const p=PLANS[b.dataset.p],el=$("#dv");$$("[data-p]").forEach(x=>x.removeAttribute("aria-current"));b.setAttribute("aria-current","true");el.hidden=false;el.scrollIntoView({behavior:RM.matches?"auto":"smooth",block:"start"});
+const j=await fetchPassage(p[2],S.tr,el,"devo");if(j&&j!=="nf")el.insertAdjacentHTML("beforeend",`<h3 class="sub serif">Let it simmer</h3><ol>${Q.map(q=>`<li>${q}</li>`).join("")}</ol>`)})}
+
+/* =========================================================
+   Church
+   ========================================================= */
+const MO="(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?\\s+\\d{1,2}",WD="(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*",TM="\\d{1,2}(?::\\d{2})?\\s?(?:am|pm|a\\.m\\.|p\\.m\\.)";
+const RX=new RegExp(`(${MO}(?:st|nd|rd|th)?|\\b\\d{1,2}/\\d{1,2}(?:/\\d{2,4})?\\b|\\b${WD}\\b|${TM})`,"gi");
+function church(){
+$("#main").innerHTML=`<section class="band"><h2>Church</h2><p>Give, keep your church's links close, and find what's coming up.</p></section>
+<div class="card"><h3>Give</h3><p class="mut">Save your church's giving page. It opens in your browser, so payment details never touch Ember.</p><input id="tl" type="url" placeholder="https://yourchurch.org/give" value="${esc(S.tithe)}" aria-label="Giving link"><div class="row"><button class="btn" id="tg">Give now</button><button class="btn ghost" id="ts">Save link</button></div><p id="tm" class="mut" aria-live="polite"></p></div>
+<div class="card list"><h3>Church links</h3><p class="mut" style="margin:0 2px 6px">Website, livestream, social pages: one tap away.</p><div id="ll"></div><div class="row" style="margin:10px 0 4px"><input id="ln" placeholder="Name, like Instagram" aria-label="Link name"><input id="lu" type="url" placeholder="https://" aria-label="Link address"></div><p><button class="btn ghost" id="la">Add link</button></p></div>
+<div class="card"><h3>Find events</h3><p class="mut">Instagram, Facebook and TikTok don't let apps read their posts. Copy the text of a post, bulletin or newsletter and paste it here. Ember picks out the lines with dates and times.</p><textarea id="an" rows="5" placeholder="Paste announcements here" aria-label="Announcements"></textarea><button class="btn" id="ax">Find events</button><div id="ao" aria-live="polite"></div></div>`;
+const links=()=>{$("#ll").innerHTML=S.links.length?S.links.map((l,i)=>`<div class="h"><a class="t" href="${esc(l.u)}" target="_blank" rel="noopener"><b>${esc(l.n)}</b></a><button class="btn ghost sm" data-r="${i}" aria-label="Remove ${esc(l.n)}">Remove</button></div>`).join(""):`<p class="mut" style="margin:6px 2px">No links yet. Add your first one below.</p>`;$$("[data-r]").forEach(b=>b.onclick=()=>{S.links.splice(b.dataset.r,1);save();links()})};links();
+const ok=u=>/^https?:\/\//i.test(u);
+$("#ts").onclick=()=>{const u=$("#tl").value.trim();if(u&&!ok(u)){$("#tm").textContent="The link must start with http:// or https://";return}S.tithe=u;save();$("#tm").textContent=u?"Link saved.":"Link cleared."};
+$("#tg").onclick=()=>{if(!S.tithe){$("#tm").textContent="Paste your giving link and save it first.";return}window.open(S.tithe,"_blank","noopener");const tOn=S.on.includes("tithe"),already=done("tithe")||doneEarlier("tithe",day());const res=tOn&&!already?mark("tithe"):null;$("#tm").textContent=!tOn?"Giving page opened.":already?`Giving page opened. Tithing is already lit this ${UNIT[sch("tithe").f]||"day"}.`:"Giving page opened. Tithing is lit.";if(res)fx($("#tg"),res)};
+$("#la").onclick=()=>{const u=$("#lu").value.trim(),n=$("#ln").value.trim()||u;if(!ok(u)){$("#lu").focus();return}S.links.push({n,u});save();$("#ln").value=$("#lu").value="";links()};
+$("#ax").onclick=()=>{const L=$("#an").value.split(/\n+/).map(s=>s.trim()).filter(s=>s.length>5);const hits=L.filter(l=>{RX.lastIndex=0;return RX.test(l)});
+$("#ao").innerHTML=hits.length?`<p class="mut" style="margin:14px 0 0">${hits.length} line${hits.length>1?"s":""} worth circling</p>`+hits.map(l=>`<div class="h"><span>${esc(l).replace(RX,m=>`<mark>${m}</mark>`)}</span></div>`).join(""):`<p class="mut">No dates or times found. Paste text that includes them.</p>`}}
+
+/* =========================================================
+   Grow
+   ========================================================= */
+const G=[
+["Lead a small group",["Start with a clear purpose: study, prayer, or community. Say it out loud in week one.","Prepare 3 to 5 open questions, not a lecture. Aim to talk about a third of the time.","Begin with a simple icebreaker and end with prayer requests, then follow up during the week.","Create safety: confidentiality, no fixing or interrupting, and never force anyone to share.","Pray for each member by name and invite others to lead sections so the group grows leaders."]],
+["Public speaking",["Build around one main idea you can say in a sentence.","Open with a story or question, give two or three points, close with one clear action.","Speak slower than feels natural and pause between points. Silence is fine.","Practice out loud three times, once standing, and time yourself.","Look at friendly faces, breathe, and remember you are serving, not performing."]],
+["Share your testimony",["Keep it to 3 minutes: life before, how you met Jesus, life since.","Be specific and honest. Skip church jargon a friend wouldn't understand.","Focus on what Jesus did, not on how bad or good you were.","Close with one sentence that invites a question or a next step.","Write it down and rehearse it with a friend so it feels natural."]],
+["Witnessing: neighbors, friends, strangers",["Pray first, then look for natural openings: needs, questions, and stories.","Neighbors: build trust through meals, help, and consistency. Friends: be honest about your faith without pressure.","Strangers: be kind, ask permission to share, and listen more than you talk.","Ask questions like \"What do you think happens after we die?\" and really listen.","Share your story, offer a Bible or invite them to church, and accept a no with grace."]]];
+const POD={
+"Nondenominational / Evangelical":["The Bible Project","Ask Pastor John","The Craig Groeschel Leadership Podcast"],
+"Baptist":["Ask Pastor John","The Briefing with Albert Mohler","The Gospel Coalition Podcast"],
+"Reformed / Presbyterian":["Renewing Your Mind","The Gospel Coalition Podcast","Ask Pastor John"],
+"Catholic":["Pray as You Go","The Bishop Barron Podcast","Catholic Answers Live"],
+"Methodist / Wesleyan":["Seedbed Daily Text","The Bible Project","Pray as You Go"],
+"Pentecostal / Charismatic":["Elevation with Steven Furtick","The Craig Groeschel Leadership Podcast","The Bible Project"],
+"Lutheran":["Issues, Etc.","The Lutheran Hour","The Bible Project"],
+"Orthodox":["Ancient Faith Today","Lord Have Mercy","Ancient Faith Radio"],
+"Anglican / Episcopal":["Mere Fidelity","Ask NT Wright Anything","The Bible Project"]};
+function memoryHTML(){return `<div class="card list" id="memory"><h3>Memory verses</h3>${S.verses.length?`<p class="mut" style="margin:0 2px 4px">Fill in the blanks from memory. Each verse you know earns embers.</p>`+S.verses.map((v,i)=>`<button class="pl" data-mv="${i}"><span class="t"><b>${esc(v.r)}</b><span class="mut clamp">${esc(v.t)}</span></span><span class="pill">Practice</span></button>`).join(""):`<p class="mut" style="margin:0 2px 14px">Tap any verse in the Bible or Devos tab to keep it here for practice.</p>`}</div>`}
+function quiz(i){const v=S.verses[i];if(!v)return;const D=$("#dlg"),w=v.t.split(" "),R=Math.random()<.5?0:1;let k=0;
+const html=w.map(x=>{const core=x.replace(/[^A-Za-z']/g,"");if(core.length>3&&(k++%2==R))return `<span class="blank" style="width:${Math.max(3,core.length)*.62}em" aria-label="blank"></span>${esc(x.slice(x.indexOf(core)+core.length))}`;return esc(x)}).join(" ");
+D.innerHTML=`<h2 class="serif">${esc(v.r)}</h2><p class="mut">Say the verse out loud, filling in the blanks. Then check yourself.</p><p class="quiz" id="qz">${html}</p>
+<div class="row" style="flex-wrap:wrap" id="qa"><button class="btn" id="qs">Show the verse</button><button class="btn ghost" id="qx">Close</button></div><p><button class="btn ghost sm" id="qr">Remove this verse</button></p>`;
+D.showModal();
+$("#qx").onclick=()=>D.close();
+$("#qr").onclick=()=>{S.verses.splice(i,1);save();D.close();toast(`Removed ${v.r}.`);grow()};
+$("#qs").onclick=()=>{$("#qz").textContent=v.t;bump("mq");$("#qa").innerHTML=`<button class="btn" id="qy">I knew it</button><button class="btn ghost" id="qn">Still learning</button>`;
+$("#qy").onclick=()=>{const r=doMore("memo","memo");D.close();if(r)fx($("#bal"),r);else rewards();toast(r?"Hidden in your heart.":"Nice work. That's the most practice Ember can count today.")};
+$("#qn").onclick=()=>{D.close();rewards();toast("Keep at it. Practice counts toward today's goal.")}}}
+function grow(section){
+$("#main").innerHTML=`<section class="band"><h2>Grow</h2><p>Memory verses, practical guides for serving and sharing your faith, and podcasts from your tradition.</p></section>
+${memoryHTML()}
+<div class="card list"><h3>Guides</h3>${G.map(g=>`<details><summary>${g[0]}</summary><ul>${g[1].map(x=>`<li>${x}</li>`).join("")}</ul></details>`).join("")}</div>
+<div class="card list" id="pods"><h3>Podcasts</h3><label class="mut" for="dn" style="margin:0 2px">Your tradition</label><select id="dn">${Object.keys(POD).map(k=>`<option ${k==S.denom?"selected":""}>${k}</option>`).join("")}</select><div id="po"></div><p class="mut" style="margin:6px 2px 14px">Each opens a search in Apple Podcasts and adds embers, up to 3 episodes a day. Compare what you hear with what your own pastor teaches.</p></div>`;
+$$("[data-mv]").forEach(b=>b.onclick=()=>quiz(+b.dataset.mv));
+const pods=()=>{$("#po").innerHTML=POD[S.denom].map(p=>`<a class="lk" target="_blank" rel="noopener" href="https://podcasts.apple.com/us/search?term=${encodeURIComponent(p)}"><span class="t"><b>${esc(p)}</b></span><span class="pill">Listen</span></a>`).join("");
+$$("#po a").forEach(a=>a.addEventListener("click",()=>{const g=extra("pod");if(g){fx(a.querySelector(".pill"),{g});toast(`+${g} embers. Enjoy the episode.`)}}))};
+$("#dn").onchange=e=>{S.denom=e.target.value;save();pods()};pods();
+if(section){const el=document.getElementById(section);if(el)el.scrollIntoView({block:"start"})}}
+
+/* =========================================================
+   Router
+   ========================================================= */
+const TABS=[["today","Today",today],["jar","Jar",jar],["bible","Bible",bible],["devos","Devos",devos],["church","Church",church],["grow","Grow",grow]];
+let tab="today";
+$("#nav").innerHTML=TABS.map(t=>`<button role="tab" data-n="${t[0]}">${t[1]}</button>`).join("");
+function go(n,section){tab=n;$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.n==n));$("#main").scrollTop=0;TABS.find(t=>t[0]==n)[2](section)}
+$$("#nav button").forEach(b=>b.onclick=()=>go(b.dataset.n));
+guard();chip();go("today");rewards();
+if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
