@@ -206,6 +206,7 @@ const on=S.on,ex=expected(),rest=on.filter(i=>!ex.includes(i));
 $("#main").innerHTML=`<section class="hero2"><p class="dt">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</p>${flame()}<h2 class="big" id="hh"></h2><p class="hs" id="hs"></p><p class="tier" id="tier" hidden></p><div class="wk" id="wk" role="img"></div></section>
 <div class="sheet">${!on.length?`<div class="empty"><p>Pick the practices that keep your fire going this season.</p><button class="btn" onclick="cust()">Choose practices</button></div>`
 :ex.length?ex.map(id=>row(id)).join(""):`<div class="empty"><p>Nothing is due today. Anything you light below is bonus heat.</p></div>`}</div>
+${votdHTML()}
 ${rest.length?`<div class="card list"><h3>Also on your list</h3><p class="mut" style="margin:0 2px 4px">Weekly, monthly and whenever-it-happens practices. Lighting one counts for its week or month and adds bonus heat today.</p>${rest.map(id=>row(id,1)).join("")}</div>`:""}
 <div id="goals"></div><div id="further"></div>
 <div class="card invite"><h3>Share Ember</h3><p class="mut" style="margin:4px 0 12px">Know someone who'd love this app? Send them the link by text, email, Snapchat or any app.</p>
@@ -218,7 +219,7 @@ if(!res){paintGoals();return}
 fx(b.querySelector(".ring"),res,12*fuel(id));
 if(!a0&&allLit())burst($(".fl svg"),34,170);else if(tier(streak(S.on)).n>t0)burst($(".fl svg"),22,130);
 paint();paintGoals()});
-bindFlame();paint(true);paintGoals()}
+bindFlame();paint(true);paintGoals();bindVotd()}
 /* tap the big flame: normal flicker, then slow, then still, then normal again */
 const FLICK=["dancing","slow","still"],FLICK_MSG=["Your flame is dancing again.","Flame slowed down.","Flame is still. Tap again to let it dance."];
 function bindFlame(){const f=$(".fl");if(!f)return;const set=()=>{f.dataset.flick=S.flick||0;f.setAttribute("aria-label",`Your flame, flickering: ${FLICK[S.flick||0]}. Tap to change.`)};
@@ -690,15 +691,37 @@ const RADIO=[
 ["hope","Hope 103.2","Sydney, Australia","https://hope1032.com.au/","Around the world"],
 ["vision","Vision Christian Radio","Australia-wide","https://vision.org.au/","Around the world"],
 ["lifefm","Life FM","New Zealand","https://www.lifefm.co.nz/","Around the world"],
-["chvn","CHVN","Winnipeg, Canada","https://www.chvnradio.com/","Around the world"]];
+["chvn","CHVN","Winnipeg, Canada","https://www.chvnradio.com/","Around the world"],
+["kloveXmas","K-LOVE Christmas","Christian Christmas hits, all year round","https://tunein.com/radio/K-LOVE-Christmas-s258421/","Christmas pop and rock"],
+["cbnxmas","CBN Christmas Radio","Christmas favorites from MercyMe, Natalie Grant and more","https://tunein.com/radio/CBN-Christmas-Radio-s151255/","Christmas pop and rock"],
+["evergreen","Evergreen","Commercial-free Christmas music, 24/7, all year","https://kvne.com/christmas-music","Christmas pop and rock"],
+["gloriousxmas","Calm Radio Glorious Christmas","Christmas songs from Christian artists","https://tunein.com/radio/GLORIOUS-CHRISTMAS-s321231/","Christmas pop and rock"],
+["crxmas","Cross Rhythms Christmas","Christmas specials from TobyMac, Crowder, Lauren Daigle and more (UK)","https://crossrhythms.co.uk/christmas","Christmas pop and rock"],
+["bigrxmas","Big R Radio Christmas Rock","Christmas hits and Christian rock","https://streema.com/radios/Big_R_Radio_Christmas_Rock","Christmas pop and rock"],
+["shinexmas","Shine 104.9 Christmas","Commercial-free, announcer-free Christmas channel","https://www.shine1049.org/event/christmas-programming-update","Christmas pop and rock"],
+["lightxmas","TheLight Christmas","Christian Christmas music from Melbourne, Australia","https://thelight.com.au/stations","Christmas pop and rock"],
+["worshiproad","Worship Road Radio","Christmas worship 24/7, December 1 to Christmas Day","https://worshiproad.com/","Christmas worship and carols"],
+["moodyxmas","Moody Radio Music of Christmas","Carols and sacred Christmas music, Thanksgiving to early January","https://www.moodyradio.org/stations/music-of-christmas","Christmas worship and carols"],
+["rejoicexmas","Rejoice Radio Christmas","Festive carols and Christmas songs","https://www.rejoice.org/Streams","Christmas worship and carols"],
+["relevantxmas","Relevant Radio Christmas","Catholic: sacred carols and Christ-centered classics","https://relevantradio.com/2025/12/your-perfect-christmas-music-mix/","Christmas worship and carols"],
+["abidingxmas","Abiding Radio Seasonal","Sacred Christmas hymns and instrumentals in season","https://tunein.com/radio/Abiding-Radio---Seasonal-s89820/","Christmas instrumental and classical"],
+["peacefulxmas","Peaceful Currents Christmas","All-instrumental, relaxing Christmas music","https://tunein.com/radio/Peaceful-Currents-Christmas-s104394/","Christmas instrumental and classical"],
+["ycholiday","YourClassical Holiday Stream","Classical Christmas: choirs, carols and orchestras","https://www.yourclassical.org/playlist/holiday-stream","Christmas instrumental and classical"],
+["xmasinst","Christmas Instrumentals playlist","Carols and hymns without words, free on Amazon Music","https://music.amazon.com/playlists/B016EDLC5I","Christmas instrumental and classical"],
+["gospelxmas","Calm Radio Gospel Christmas","Gospel voices singing the Christmas songs you love","https://tunein.com/radio/GOSPEL-CHRISTMAS-s321230/","Christmas gospel and country"],
+["181gospelxmas","181.FM Christmas Gospel","Gospel Christmas music in season","https://www.181.fm/","Christmas gospel and country"],
+["cbncountryxmas","CBN Cross Country Christmas","Country, bluegrass and Southern gospel Christmas","https://www.cbn.com/radio","Christmas gospel and country"],
+["kings","A Festival of Nine Lessons and Carols","Live from King's College, Cambridge, on Christmas Eve","https://www.kings.cam.ac.uk/chapel/festival-nine-lessons-and-carols","Christmas Eve"],
+["xmasmore","More Christian Christmas stations","Browse religious Christmas music on TuneIn","https://tunein.com/radio/Stream-Religious-Christmas-Music-g4141/","Christmas Eve"]];
 /* artist radio inside streaming apps: [artist, description] */
 const ARTISTS=[["Hillsong UNITED","Youthful worship from Sydney, Australia"],["Hillsong Worship","Worship anthems from Hillsong Church"],["Hillsong Young & Free","Upbeat worship from Hillsong's youth"],["Bethel Music","Worship collective from Redding, California"],["Bethel Live","Bethel Music's live worship recordings"],["Jesus Culture","Worship born out of a youth revival"],["Elevation Worship","Worship from Elevation Church"],["Maverick City Music","Gospel-infused worship collective"],["Passion","Worship from the Passion student gatherings"],["Planetshakers","High-energy worship from Melbourne"],["Brandon Lake","Worship leader and songwriter"],["Forrest Frank","Feel-good Christian pop"]];
 /* modern hymn writers and singers: [artist, description] */
 const MHYMN=[["Keith & Kristyn Getty","\"In Christ Alone\" and new hymns for the church"],["CityAlight","Simple, rich hymns from Sydney"],["Sovereign Grace Music","Old hymns and new, sung by the church"],["Shane & Shane","Psalms and hymns in a modern style"],["Matt Boswell","Modern hymn writer and pastor"],["Matt Papa","Modern hymn writer"],["Fernando Ortega","Quiet arrangements of classic hymns"],["Anchor Hymns","Hymns for the gathered church"],["High Street Hymns","Old hymns with new tunes"],["Stillcreek","Singable, Bible-rooted songs"]];
 const aKey=n=>"radio:a-"+n.toLowerCase().replace(/[^a-z0-9]+/g,"-");
-const HNOTE={"Hymns":"Round-the-clock hymn stations. Each opens on TuneIn, which plays free in your browser.","Old hymns":"Traditional, instrumental and bluegrass hymns, plus programs on the stories behind them.","Modern hymns":"New hymns written for today's church. The artist buttons open Spotify or YouTube Music, where you tap Radio for nonstop hymns."};
-function radio(){const G3=[...new Set(RADIO.map(r=>r[4]))];
-$("#main").innerHTML=`<section class="band"><h2>Christian radio</h2><p>${RADIO.length} stations and ${ARTISTS.length+MHYMN.length} artist radios, from worship and hymns to hip-hop, Catholic and Orthodox. Each opens the station's own site to listen live.</p></section>
+const HNOTE={"Christmas pop and rock":"Some of these play Christmas music all year. Others switch over from late November to early January.","Christmas Eve":"The King's College service airs at 3 p.m. in England, which is 10 a.m. Eastern. It's broadcast on BBC Radio 4 and many public radio stations.","Hymns":"Round-the-clock hymn stations. Each opens on TuneIn, which plays free in your browser.","Old hymns":"Traditional, instrumental and bluegrass hymns, plus programs on the stories behind them.","Modern hymns":"New hymns written for today's church. The artist buttons open Spotify or YouTube Music, where you tap Radio for nonstop hymns."};
+const xmasSeason=()=>{const d=new Date(),m=d.getMonth();return m==10&&d.getDate()>=15||m==11||m==0&&d.getDate()<=6};
+function radio(){const all=[...new Set(RADIO.map(r=>r[4]))],isX=g=>g.startsWith("Christmas"),XS=xmasSeason(),G3=XS?[...all.filter(isX),...all.filter(g=>!isX(g))]:[...all.filter(g=>!isX(g)),...all.filter(isX)];
+$("#main").innerHTML=`<section class="band"><h2>Christian radio</h2><p>${RADIO.length} stations and ${ARTISTS.length+MHYMN.length} artist radios, from worship and hymns to hip-hop, Catholic and Orthodox. Each opens the station's own site to listen live.${XS?" It's Christmastime, so Christmas stations come first.":""}</p></section>
 <div class="card list"><h3>Your favorites</h3><div data-strip="radio:">${stripHTML(["radio:"])}</div></div>
 ${G3.map(g=>`<div class="card list"><h3>${g}</h3>${HNOTE[g]?`<p class="mut" style="margin:0 2px 4px">${HNOTE[g]}</p>`:""}<div data-list="radio-${aSlug(g)}">${listHTML("radio-"+aSlug(g))}</div></div>`+(g=="Worship and praise"?`<div class="card list"><h3>Worship artist radio</h3><p class="mut" style="margin:0 2px 4px">Each opens the artist in Spotify or YouTube Music. Tap the artist's Radio there for nonstop music from them and similar artists.</p><div data-list="artists">${listHTML("artists")}</div></div>`:"")).join("")}
 <div class="card list"><h3>Your stations</h3><div data-list="radio-custom">${listHTML("radio-custom")}</div>${addForm("radio","radio station")}</div>
@@ -796,8 +819,76 @@ jar:'<path d="M8 3h8v3H8z"/><path d="M7.5 6h9c1.6 1 2.5 2.6 2.5 4.5V18a3 3 0 0 1
 bible:'<path d="M6 3.5h11.5v14H7.5A1.5 1.5 0 0 0 6 19z"/><path d="M6 19a1.5 1.5 0 0 0 1.5 1.5h10v-3"/><path d="M11.75 6.5v7M9.25 9h5"/>',
 devos:'<path d="M4 10h12v3.5A5.5 5.5 0 0 1 10.5 19h-1A5.5 5.5 0 0 1 4 13.5z"/><path d="M16 11.5h1.25a2.25 2.25 0 0 1 0 4.5H15.5"/><path d="M8 3.5c0 1.5 1 1.5 1 3M12 3.5c0 1.5 1 1.5 1 3"/>',
 radio:'<rect x="3.5" y="9" width="17" height="11" rx="2.5"/><path d="M7 9l9.5-5"/><circle cx="8.5" cy="14.5" r="2"/><path d="M13.5 13h4M13.5 16h4"/>',
-grow:'<path d="M12 21v-9"/><path d="M12 12c0-4 3-6.5 7.5-6.5 0 4-3 6.5-7.5 6.5z"/><path d="M12 14.5c0-3.2-2.5-5.5-6.5-5.5 0 3.2 2.5 5.5 6.5 5.5z"/>',
+grow:'<path d="M4.5 18h15l-1.6 3.2H6.1z"/><path d="M12.5 18c0-2.2-2.3-3.2-1.8-5.6.4-1.9 2.6-2.5 2.3-4.6"/><path d="M9.5 7.8c0-1.6 1.5-2.8 3.5-2.8s3.8 1.1 3.8 2.6c0 .9-.8 1.4-1.8 1.4h-4c-.9 0-1.5-.5-1.5-1.2z"/><path d="M3.8 12.7c0-1 1-1.8 2.4-1.8s2.6.8 2.6 1.8c0 .6-.5.9-1.2.9H5c-.7 0-1.2-.3-1.2-.9z"/><path d="M15.2 11.2c0-1 1.1-1.8 2.5-1.8s2.5.8 2.5 1.8c0 .6-.5.9-1.2.9h-2.6c-.7 0-1.2-.3-1.2-.9z"/>',
 church:'<path d="M12 2.5v4M10 4.5h4"/><path d="M5 21v-9.5l7-5 7 5V21z"/><path d="M10 21v-3.5a2 2 0 0 1 4 0V21"/>'};
+/* =========================================================
+   Verse of the day: [id, label, group, references]
+   Text loads from bible-api.com in the reader's chosen version and is cached.
+   ========================================================= */
+const VCATS=[
+["uplifting","Uplifting","How you feel",["Psalm 118:24","Nehemiah 8:10","Zephaniah 3:17","Psalm 16:11","Lamentations 3:22-23","Romans 15:13","Psalm 30:5","Philippians 4:4","Psalm 34:8","Psalm 126:3"]],
+["encouraging","Encouraging","How you feel",["Joshua 1:9","Deuteronomy 31:6","Isaiah 41:10","Romans 8:28","Philippians 1:6","2 Corinthians 4:16-17","Hebrews 10:23","Galatians 6:9","Psalm 27:14","Romans 8:31"]],
+["strength","For strength","How you feel",["Isaiah 40:31","Philippians 4:13","Psalm 46:1","2 Corinthians 12:9","Psalm 28:7","Ephesians 6:10","Habakkuk 3:19","Psalm 73:26","Isaiah 40:29","1 Chronicles 16:11"]],
+["hope","Hope","How you feel",["Jeremiah 29:11","Romans 5:5","Lamentations 3:24","Hebrews 6:19","Psalm 42:11","Romans 8:24-25","1 Peter 1:3","Psalm 62:5","Micah 7:7","Proverbs 23:18"]],
+["peace","Peace","How you feel",["John 14:27","Philippians 4:6-7","Isaiah 26:3","Numbers 6:24-26","Colossians 3:15","John 16:33","Psalm 4:8","Romans 5:1","2 Thessalonians 3:16","Psalm 29:11"]],
+["joy","Joy","How you feel",["John 15:11","James 1:2-3","Romans 14:17","Psalm 5:11","Isaiah 12:3","1 Peter 1:8","Habakkuk 3:17-18","Proverbs 17:22","Psalm 126:5","Psalm 16:11"]],
+["thankful","Thankful","How you feel",["1 Thessalonians 5:16-18","Psalm 100:4","Psalm 107:1","Colossians 3:17","Psalm 9:1","Ephesians 5:20","2 Corinthians 9:15","Psalm 136:1","Hebrews 12:28","James 1:17"]],
+["anxious","For the anxious","When life is hard",["1 Peter 5:7","Matthew 6:34","Philippians 4:6-7","Psalm 94:19","Psalm 55:22","Matthew 6:25-26","Isaiah 41:13","John 14:1","Proverbs 12:25","Psalm 139:23-24"]],
+["afraid","For the afraid","When life is hard",["Psalm 27:1","2 Timothy 1:7","Psalm 23:4","Isaiah 43:1","Psalm 56:3-4","Psalm 34:4","Romans 8:15","1 John 4:18","Deuteronomy 31:8","Isaiah 41:10"]],
+["tired","For the tired","When life is hard",["Matthew 11:28-30","Isaiah 40:29","Psalm 23:1-3","Galatians 6:9","Psalm 127:2","Jeremiah 31:25","Exodus 33:14","Psalm 62:1","2 Corinthians 4:16","Mark 6:31"]],
+["grieving","For the grieving","When life is hard",["Psalm 34:18","Matthew 5:4","Revelation 21:4","John 11:25","1 Thessalonians 4:13-14","Psalm 147:3","2 Corinthians 1:3-4","John 14:1-3","Isaiah 53:4","Psalm 30:5"]],
+["lonely","For the lonely","When life is hard",["Deuteronomy 31:6","Psalm 68:6","Matthew 28:20","Hebrews 13:5","Psalm 25:16","Isaiah 43:2","John 14:18","Psalm 139:7-10","Romans 8:38-39","Psalm 27:10"]],
+["sick","For the sick","When life is hard",["James 5:14-15","Psalm 41:3","Jeremiah 17:14","Psalm 103:2-3","3 John 1:2","Isaiah 53:5","Psalm 73:26","2 Corinthians 4:16-18","Psalm 6:2","Exodus 15:26"]],
+["waiting","For the waiting","When life is hard",["Psalm 27:14","Isaiah 40:31","Lamentations 3:25-26","Psalm 37:7","Habakkuk 2:3","Psalm 130:5","Micah 7:7","Romans 8:25","Psalm 40:1","James 5:7-8"]],
+["temptation","Facing temptation","When life is hard",["1 Corinthians 10:13","James 4:7","Hebrews 4:15-16","Matthew 26:41","James 1:12","Psalm 119:11","Galatians 5:16","Hebrews 2:18","2 Peter 2:9","Romans 6:14"]],
+["wisdom","Seeking wisdom","When life is hard",["James 1:5","Proverbs 3:5-6","Psalm 32:8","Proverbs 2:6","Isaiah 30:21","Proverbs 16:9","Psalm 119:105","Proverbs 9:10","Proverbs 19:21","Colossians 3:16"]],
+["forgiveness","Forgiveness","When life is hard",["1 John 1:9","Ephesians 4:32","Colossians 3:13","Psalm 103:12","Matthew 6:14-15","Isaiah 1:18","Micah 7:18-19","Luke 6:37","Acts 3:19","Romans 8:1"]],
+["children","For children","Who you are",["Matthew 19:14","1 Timothy 4:12","Ephesians 6:1-3","Psalm 139:14","Proverbs 3:5","Psalm 56:3","Luke 2:52","John 3:16","1 John 4:19","Colossians 3:20"]],
+["young","For the young","Who you are",["1 Timothy 4:12","Ecclesiastes 12:1","Psalm 119:9","2 Timothy 2:22","Lamentations 3:27","Proverbs 20:29","Titus 2:6-7","Jeremiah 1:7","1 John 2:14","Proverbs 3:1-2"]],
+["students","For students","Who you are",["Proverbs 1:7","Colossians 3:23","James 1:5","Proverbs 4:7","2 Timothy 2:15","Daniel 1:17","Proverbs 18:15","Proverbs 16:3","Psalm 90:12","Philippians 4:13"]],
+["old","For the old","Who you are",["Isaiah 46:4","Psalm 71:18","Psalm 92:14","Proverbs 16:31","2 Corinthians 4:16","Psalm 71:9","Job 12:12","Titus 2:2-3","Psalm 90:12","Isaiah 40:31"]],
+["husbands","For husbands","Who you are",["Ephesians 5:25","Ephesians 5:28","Colossians 3:19","1 Peter 3:7","Proverbs 18:22","Ecclesiastes 9:9","1 Corinthians 13:4-7","Proverbs 5:18","Mark 10:9","Ecclesiastes 4:12"]],
+["wives","For wives","Who you are",["Proverbs 31:10-12","Proverbs 31:25-26","Ephesians 5:33","Titus 2:4-5","1 Peter 3:3-4","Proverbs 31:30","1 Corinthians 13:4-7","Colossians 3:18","Ruth 1:16","Proverbs 14:1"]],
+["parents","For parents","Who you are",["Proverbs 22:6","Deuteronomy 6:6-7","Ephesians 6:4","Psalm 127:3","Colossians 3:21","Isaiah 54:13","3 John 1:4","Psalm 103:13","Proverbs 29:17","Joshua 24:15"]],
+["friends","For friends","Who you are",["Proverbs 17:17","John 15:13","Proverbs 27:17","Ecclesiastes 4:9-10","Proverbs 18:24","Romans 12:10","1 Thessalonians 5:11","Proverbs 27:9","Galatians 6:2","Philippians 1:3"]],
+["employees","For employees","Who you are",["Colossians 3:23-24","Proverbs 22:29","Proverbs 12:24","Ecclesiastes 9:10","1 Corinthians 10:31","Proverbs 16:3","Proverbs 14:23","Psalm 90:17","Matthew 5:16","Proverbs 10:4"]],
+["employers","For employers","Who you are",["Colossians 4:1","Ephesians 6:9","James 5:4","Leviticus 19:13","Proverbs 3:27","Deuteronomy 24:14-15","Micah 6:8","Luke 6:31","Philippians 2:3-4","Proverbs 11:1"]],
+["leaders","For leaders","Who you are",["Mark 10:43-45","Proverbs 11:14","1 Peter 5:2-3","Proverbs 29:2","Exodus 18:21","Romans 12:8","James 3:1","2 Samuel 23:3-4","Proverbs 16:12","Micah 6:8"]],
+["poor","For the poor","Who you are",["Psalm 34:6","Matthew 5:3","James 2:5","Philippians 4:19","Psalm 113:7-8","Matthew 6:31-33","Psalm 72:12-13","Luke 6:20","Isaiah 25:4","Psalm 9:18"]],
+["wealthy","For the wealthy","Who you are",["1 Timothy 6:17-19","Matthew 6:19-21","Proverbs 3:9-10","Luke 12:15","Proverbs 11:25","Deuteronomy 8:18","Ecclesiastes 5:10","2 Corinthians 9:7","Luke 12:48","Hebrews 13:5"]],
+["christmas","Christmas","Seasons",["Isaiah 9:6","Luke 2:10-11","Matthew 1:23","John 1:14","Luke 2:14","Micah 5:2","Galatians 4:4-5","Isaiah 7:14","John 3:16","Matthew 2:10-11"]],
+["easter","Easter","Seasons",["Matthew 28:6","1 Corinthians 15:55-57","John 11:25-26","Romans 6:4","1 Peter 1:3","Luke 24:6-7","Romans 5:8","Isaiah 53:5","John 20:29","Philippians 3:10"]]];
+const VC=Object.fromEntries(VCATS.map(c=>[c[0],c]));
+const VALL=[...new Set(VCATS.map(c=>c[3]).flat())];
+const vRefs=c=>c=="any"?VALL:(VC[c]||VC.encouraging)[3];
+function vPick(){const c=S.vcat||"any",L=vRefs(c);if(S.vod!==day()){S.vod=day();S.vo=0}return L[(hash(day()+c)+(S.vo||0))%L.length]}
+let VCACHE={};try{VCACHE=JSON.parse(localStorage.getItem("ember-verses")||"{}")}catch(e){}
+function vSave(){try{const k=Object.keys(VCACHE);if(k.length>300)k.slice(0,k.length-300).forEach(x=>delete VCACHE[x]);localStorage.setItem("ember-verses",JSON.stringify(VCACHE))}catch(e){}}
+async function vText(ref,tr){const key=tr+"|"+ref;if(VCACHE[key])return VCACHE[key];
+const r=await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=${tr}`);if(!r.ok)throw 0;const j=await r.json();
+const v={t:j.verses.map(x=>x.text.trim()).join(" ").replace(/\s+/g," "),n:j.translation_name||TR[tr]};VCACHE[key]=v;vSave();return v}
+function votdHTML(){const c=S.vcat||"any",G=[...new Set(VCATS.map(x=>x[2]))];
+return `<div class="card votd" id="votd"><div class="vh"><h3>Verse of the day</h3>
+<select id="vcat" aria-label="Choose a kind of verse"><option value="any"${c=="any"?" selected":""}>Any kind</option>${G.map(g=>`<optgroup label="${g}">${VCATS.filter(x=>x[2]==g).map(x=>`<option value="${x[0]}"${c==x[0]?" selected":""}>${x[1]}</option>`).join("")}</optgroup>`).join("")}</select></div>
+<div id="vbody" aria-live="polite"></div>
+<div class="vact"><button class="btn ghost sm" id="vnx">Another verse</button><button class="btn ghost sm" id="vkp">Keep for memory</button><button class="btn ghost sm" id="vsh">Share</button></div></div>`}
+let vNow=null;
+async function paintVotd(){const b=$("#vbody");if(!b)return;const ref=vPick(),tr=S.tr||"web";vNow={r:ref,t:""};
+const kp=$("#vkp");if(kp){kp.disabled=isKept(ref);kp.textContent=isKept(ref)?"Kept for memory":"Keep for memory"}
+const key=tr+"|"+ref;if(!VCACHE[key])b.innerHTML=`<p class="vref"><b>${esc(ref)}</b></p><p class="mut">Opening your Bible…</p>`;
+try{const v=await vText(ref,tr);if(vNow.r!==ref)return;vNow.t=v.t;
+b.innerHTML=`<blockquote class="vtx">${esc(v.t)}</blockquote><p class="vref"><b>${esc(ref)}</b> <span class="mut">${esc(v.n)}</span></p>`}
+catch(e){if(vNow.r!==ref)return;b.innerHTML=`<p class="vref"><b>${esc(ref)}</b></p><p class="mut">The verse couldn't load right now. <a href="https://www.biblegateway.com/passage/?search=${encodeURIComponent(ref)}" target="_blank" rel="noopener">Read ${esc(ref)} on Bible Gateway</a>.</p>`}}
+function bindVotd(){if(!$("#votd"))return;
+$("#vcat").onchange=e=>{S.vcat=e.target.value;S.vo=0;save();paintVotd()};
+$("#vnx").onclick=()=>{S.vod=day();S.vo=(S.vo||0)+1;save();paintVotd()};
+$("#vkp").onclick=()=>{if(!vNow||!vNow.t){toast("Wait for the verse to load, then keep it.");return}if(isKept(vNow.r))return;
+S.verses.push({r:vNow.r,t:vNow.t});save();paintVotd();toast(`Kept ${vNow.r}. Practice it on the Grow tab.`)};
+$("#vsh").onclick=async()=>{if(!vNow)return;const msg=`${vNow.t?`"${vNow.t}" `:""}${vNow.r}\n\nFrom Ember: ${appUrl()}`;
+try{if(navigator.share){await navigator.share({text:msg});return}}catch(e){return}
+try{await navigator.clipboard.writeText(msg);toast("Verse copied. Paste it anywhere.")}catch(e){toast("Couldn't copy the verse.")}};
+paintVotd()}
+
 const TABS=[["today","Today",today],["jar","Jar",jar],["bible","Bible",bible],["devos","Devos",devos],["podcasts","Podcasts",podcasts],["radio","Radio",radio],["grow","Grow",grow],["church","Church",church]];
 let tab="today";
 $("#nav").innerHTML=TABS.map(t=>`<button role="tab" data-n="${t[0]}"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[t[0]]}</svg></span><span class="lb">${t[1]}</span></button>`).join("");
