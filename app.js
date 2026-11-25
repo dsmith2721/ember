@@ -7,7 +7,7 @@
    ========================================================= */
 const SUGGEST_URL="";
 /* SITE: Ember's public address, used in every shared link */
-const SITE="https://dsmith2721.github.io/ember/";
+const SITE="https://mightywaters.github.io/ember/";
 /* =========================================================
    Ember: keep your faith fire lit
    ========================================================= */
