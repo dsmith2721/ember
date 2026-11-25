@@ -28,3 +28,7 @@ At the top of `app.js`:
 Upload all files to the main folder of the GitHub repository. GitHub Pages updates within a minute or two. People who already installed Ember get the new version the next time they open it (sometimes after reopening once).
 
 Each person's progress is saved on their own device. Nothing is sent to a server.
+
+## Visitor counts
+
+Ember uses GoatCounter (darkwaters.goatcounter.com) to count anonymous visits: page views, which tabs are opened, Share Ember taps and home-screen installs. No names, accounts or practice data are sent. Everything a person does in Ember stays on their phone.

@@ -139,11 +139,9 @@ const QUESTS=[
 {id:"ch2",t:"Read 2 Bible chapters",ok:()=>S.on.includes("bible"),n:2,v:()=>+done("bible")+xc("ch"),r:25},
 {id:"pray",t:"Pray 5 extra minutes",ok:()=>S.on.includes("pray"),n:1,v:()=>xc("pray")+cnt("prayed"),r:25},
 {id:"kind",t:"Do an extra act of kindness",ok:()=>S.on.includes("kind"),n:1,v:()=>xc("kind"),r:20},
-{id:"memo",t:"Practice a kept verse",ok:()=>S.verses.length>0,n:1,v:()=>cnt("mq"),r:25},
 {id:"pod",t:"Listen to a podcast or Christian radio",ok:()=>true,n:1,v:()=>xc("pod"),r:20},
 {id:"devo",t:"Read a devotional",ok:()=>S.on.includes("devo"),n:1,v:()=>+done("devo"),r:20},
-{id:"more3",t:"Go further 3 times",ok:()=>true,n:3,v:()=>xTotal(),r:30},
-{id:"keep",t:"Keep a new verse",ok:()=>true,n:1,v:()=>cnt("kept"),r:15}];
+{id:"more3",t:"Go further 3 times",ok:()=>true,n:3,v:()=>xTotal(),r:30}];
 const hash=s=>{let h=2166136261;for(const c of s)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0};
 function todayQuests(){if(!S.q||S.q.d!==day()){const pool=QUESTS.filter(q=>q.ok()).sort((a,b)=>hash(day()+a.id)-hash(day()+b.id));S.q={d:day(),ids:pool.slice(0,3).map(q=>q.id)};save()}
 return S.q.ids.map(id=>QUESTS.find(q=>q.id==id)).filter(Boolean)}
@@ -258,7 +256,7 @@ if(on("pray"))R.push(["pray","Pray 5 more minutes","Starts a 5-minute prayer tim
 if(on("kind"))R.push(["kind","Log another act of kindness","Every kindness counts"]);
 if(on("bible"))R.push(["ch","Read another Bible chapter","Opens the Bible tab"]);
 if(on("devo"))R.push(["devo","Read another devotional","Opens Devos"]);
-R.push(["memo",S.verses.length?"Practice a kept verse":"Keep a verse to memorize",S.verses.length?"Quick memory practice":"Tap any verse in the Bible tab"]);
+
 R.push(["radio","Tune in to Christian radio","Opens the Radio tab"]);R.push(["pod","Listen to a podcast episode","Opens the Podcasts tab"]);
 return `<div class="card list"><h3>Go further</h3><p class="mut" style="margin:0 2px 4px">Each extra earns embers and raises today's multiplier by 0.1×, up to 2×.</p>
 ${R.map(([k,t,s])=>`<button class="pl" data-x="${k}"><span class="t"><b>${t}</b><span class="mut">${s}</span></span><span class="pill">+${Math.round((XTRA[k]||XTRA.pod).e*mult())}</span></button>`).join("")}</div>`}
@@ -267,7 +265,6 @@ function bindFurther(){$$("[data-x]").forEach(b=>b.onclick=()=>{const k=b.datase
 if(k=="pray")return prayTimer();
 if(k=="kind"){const r=doMore("kind","kind");if(!r)return toast("That's the most kindness Ember can count today. Keep going anyway.");fx(b.querySelector(".pill"),r);refresh();return}
 if(k=="ch")return go("bible");if(k=="devo")return go("devos");
-if(k=="memo")return S.verses.length?go("grow","memory"):go("bible");
 if(k=="pod")return go("podcasts");if(k=="radio")return go("radio")})}
 function refresh(){if(tab=="today"){paint();paintGoals()}else if(tab=="jar")jar();chip()}
 
@@ -395,7 +392,12 @@ $$('[data-kind="copy"]').forEach(a=>a.onclick=async ev=>{ev.preventDefault();con
 if(navigator.share&&n!="WeChat"){$("#shm").textContent=`Message copied. Choose ${n} in the menu, or paste it there.`;try{await navigator.share({title,text,url})}catch(err){}return}
 $("#shm").textContent=ok?`Message copied. In ${n}, open a chat and paste it.`:`Copy the link below, then paste it into ${n}.`;
 setTimeout(()=>{location.href=a.getAttribute("href")},ok?700:0)})}
-document.addEventListener("click",e=>{if(e.target.closest("[data-share-app]"))shareApp()});
+/* ---------- Anonymous counts (GoatCounter): totals only, never what anyone practices ---------- */
+const gc=name=>{try{const f=()=>{if(window.goatcounter&&window.goatcounter.count)window.goatcounter.count({path:name,title:name,event:true})};
+if(window.goatcounter&&window.goatcounter.count)f();else addEventListener("load",()=>setTimeout(f,800),{once:true})}catch(e){}};
+addEventListener("appinstalled",()=>gc("installed"));
+try{if((matchMedia("(display-mode: standalone)").matches||navigator.standalone)&&!localStorage.getItem("ember-gc-home")){localStorage.setItem("ember-gc-home","1");gc("first-open-from-home-screen")}}catch(e){}
+document.addEventListener("click",e=>{if(e.target.closest("[data-share-app]")){gc("share-ember");shareApp()}});
 
 /* =========================================================
    Customize
@@ -408,7 +410,7 @@ h+=`<div class="cu"><label class="tog"><input type="checkbox" value="${id}" ${c?
 <select data-d aria-label="Which day: ${esc(n)}">${DOW.map((l,i)=>`<option value="${i}" ${(s.d??0)==i?"selected":""}>${l}s</option>`).join("")}</select>
 <label class="dm">Day <input data-m type="number" min="1" max="28" value="${s.f=="monthly"?s.d||1:1}" aria-label="Day of the month: ${esc(n)}"></label>
 <select data-a aria-label="Which weeks: ${esc(n)}"><option value="this" ${thisOn(id)?"selected":""}>Starting this week</option><option value="next" ${thisOn(id)?"":"selected"}>Starting next week</option></select></div></div>`}}
-$("#dlg").innerHTML=h+`<p><button class="btn" id="ok">Save practices</button></p>`;$("#dlg").showModal();
+$("#dlg").innerHTML=h+`<p><button class="btn" id="ok">Save practices</button></p><p class="mut" style="font-size:13px">Privacy: everything you do in Ember stays on this phone. Ember counts anonymous visits, like how many people open each tab, with no names or personal details.</p>`;$("#dlg").showModal();
 const vis=box=>{const f=box.querySelector("[data-f]").value;box.querySelector("[data-d]").hidden=!["weekly","biweekly"].includes(f);box.querySelector(".dm").hidden=f!="monthly";box.querySelector("[data-a]").hidden=f!="biweekly"};
 $$("#dlg .sch").forEach(box=>{vis(box);box.querySelector("[data-f]").onchange=()=>vis(box)});
 $$("#dlg .tog input").forEach(i=>i.onchange=()=>{$(`#dlg .sch[data-for="${i.value}"]`).hidden=!i.checked});
@@ -448,9 +450,7 @@ try{r=await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=
 if(!r.ok){el.innerHTML=`<p class="err">Couldn't find ${esc(ref)}. Try another chapter.</p>`;return "nf"}
 try{const j=await r.json(),R=j.reference;
 const vr=v=>`${v.book_name} ${v.chapter}:${v.verse}`;
-el.innerHTML=`${head?`<h3>${esc(R)}</h3><p class="mut tn">${esc(j.translation_name||TR[tr])}</p>`:""}<p class="mut hint">Tap a verse to keep it for memory practice.</p><div class="verses">${j.verses.map((v,i)=>`<p data-v="${i}" class="${isKept(vr(v))?"kept":""}" tabindex="0" role="button" aria-pressed="${isKept(vr(v))}"><sup>${v.verse}</sup>${esc(v.text.trim())}</p>`).join("")}</div>${markId?`<button class="lightbtn" id="mk" aria-pressed="${done(markId)}">${lb(markId,R)}</button>`:""}`;
-el.querySelectorAll("[data-v]").forEach(p=>{const v=j.verses[p.dataset.v],k=vr(v);const tg=()=>{if(isKept(k)){S.verses=S.verses.filter(x=>x.r!=k);toast(`Removed ${k}.`)}else{S.verses.push({r:k,t:v.text.trim().replace(/\s+/g," ")});bump("kept");toast(`Kept ${k}. Practice it in Grow.`);rewards()}save();p.classList.toggle("kept",isKept(k));p.setAttribute("aria-pressed",isKept(k))};
-p.onclick=tg;p.onkeydown=e=>{if(e.key=="Enter"||e.key==" "){e.preventDefault();tg()}}});
+el.innerHTML=`${head?`<h3>${esc(R)}</h3><p class="mut tn">${esc(j.translation_name||TR[tr])}</p>`:""}<div class="verses">${j.verses.map((v,i)=>`<p><sup>${v.verse}</sup>${esc(v.text.trim())}</p>`).join("")}</div>${markId?`<button class="lightbtn" id="mk" aria-pressed="${done(markId)}">${lb(markId,R)}</button>`:""}`;
 if(markId)$("#mk").onclick=e=>{const b=e.currentTarget;let res=null;const rd=S.read[day()]||(S.read[day()]=[]);
 if(!done(markId)){res=toggle(markId);rd.push(R)}else if(!counted(R)){const g=extra(XK[markId]);rd.push(R);res=g?{g}:null;if(!g)toast("You've hit today's limit for extra readings. Keep reading anyway.")}
 save();b.setAttribute("aria-pressed","true");b.innerHTML=lb(markId,R);if(res)fx(b.querySelector(".ring"),res)};return j}
@@ -581,10 +581,45 @@ $("#ao").innerHTML=hits.length?`<p class="mut" style="margin:14px 0 0">${hits.le
    Grow
    ========================================================= */
 const G=[
-["Lead a small group",["Start with a clear purpose: study, prayer, or community. Say it out loud in week one.","Prepare 3 to 5 open questions, not a lecture. Aim to talk about a third of the time.","Begin with a simple icebreaker and end with prayer requests, then follow up during the week.","Create safety: confidentiality, no fixing or interrupting, and never force anyone to share.","Pray for each member by name and invite others to lead sections so the group grows leaders."]],
-["Public speaking",["Build around one main idea you can say in a sentence.","Open with a story or question, give two or three points, close with one clear action.","Speak slower than feels natural and pause between points. Silence is fine.","Practice out loud three times, once standing, and time yourself.","Look at friendly faces, breathe, and remember you are serving, not performing."]],
-["Share your testimony",["Keep it to 3 minutes: life before, how you met Jesus, life since.","Be specific and honest. Skip church jargon a friend wouldn't understand.","Focus on what Jesus did, not on how bad or good you were.","Close with one sentence that invites a question or a next step.","Write it down and rehearse it with a friend so it feels natural."]],
-["Witnessing: neighbors, friends, strangers",["Pray first, then look for natural openings: needs, questions, and stories.","Neighbors: build trust through meals, help, and consistency. Friends: be honest about your faith without pressure.","Strangers: be kind, ask permission to share, and listen more than you talk.","Ask questions like \"What do you think happens after we die?\" and really listen.","Share your story, offer a Bible or invite them to church, and accept a no with grace."]]];
+["Serve on Sunday",["Ask your church where help is needed most: greeting, kids, setup, tech, music or prayer.","Start with one team and one Sunday a month.","Arrive early, learn the routine, and ask questions.","Remember the goal: helping people meet God, not just finishing tasks.","Thank the people you serve beside, and invite a friend to join you."],"Church life"],
+["Welcome newcomers",["Watch for new faces before and after the service.","Introduce yourself and learn their name. Use it again before they leave.","Show them where to go: kids' check-in, restrooms, coffee and seating.","Sit with them if they're alone, and introduce them to one or two others.","Follow up during the week, or invite them to lunch or a small group."],"Church life"],
+["Prepare for baptism",["Read what Jesus and the apostles say: Matthew 28:19, Acts 2:38 and Romans 6:3-4.","Talk with your pastor about what baptism means in your church.","Write or practice a short testimony of how you came to faith.","Invite family and friends to celebrate with you.","Plan your next step afterward, like joining a small group or serving."],"Church life"],
+["Choose a church after a move",["Pray, and list what matters most: teaching, worship, community and kids' ministry.","Read each church's beliefs and listen to a few sermons online.","Visit each church at least twice, and try a small group or class.","Ask how new people get connected and how you could serve.","Commit to one church instead of visiting forever. Belonging takes time."],"Church life"],
+["Faith at work",["Do excellent, honest work as if for the Lord (Colossians 3:23).","Be kind and fair, especially to people others overlook.","Pray for your coworkers, your boss and the decisions in front of you.","Keep your word, own your mistakes, and avoid gossip.","Let your faith come up naturally, and be ready to share why you have hope."],"Life stages"],
+["Singleness and dating",["Your worth comes from God, not your relationship status.","Use this season to grow, serve and build deep friendships.","Date with purpose: look for shared faith, character and values.","Set clear physical and emotional boundaries before you need them.","Involve trusted friends or mentors, and don't rush."],"Life stages"],
+["Raise teens",["Listen more than you lecture, and ask open questions.","Keep regular one-on-one time, like a drive, a meal or a walk.","Live your faith honestly, including how you handle failure.","Give growing freedom with clear expectations.","Connect them with a youth group and other trusted adults who share your faith."],"Life stages"],
+["Care for aging parents",["Talk early about their wishes for health care, money and where they'll live.","Share the load with siblings, and ask for help when you need it.","Honor them by including them in decisions as much as possible.","Visit often, listen to their stories, and pray with them.","Care for yourself too. Rest and support help you love them well."],"Life stages"],
+["Pray for your city",["Pray for leaders by name: mayor, council, police, teachers and pastors.","Walk or drive your neighborhood and pray for what you see.","Pray for schools, hospitals, businesses and people in need.","Ask God to show you one way to serve your city this month.","Gather a few friends to pray together once a month."],"Outreach"],
+["Support missionaries",["Pick one or two missionaries to know well, perhaps from your church.","Pray for them by name each week, and ask for specific requests.","Give regularly, even a small monthly amount.","Write to them. Encouragement matters far from home.","Learn about the culture and people they serve."],"Outreach"],
+["Prepare for a short-term mission trip",["Go with a trusted church or organization that serves long-term partners.","Learn about the culture, the people and the work before you go.","Raise prayer support as well as financial support.","Go to serve and learn, not to fix. Be flexible and humble.","Debrief when you return, and keep praying for the people you met."],"Outreach"],
+["Help a friend with addiction",["Pray, and approach your friend with love, not shame.","Speak honestly about what you've seen, at a calm and sober moment.","Encourage professional help and a recovery group, like Celebrate Recovery.","In the US, the free SAMHSA National Helpline is open 24/7 at 1-800-662-4357.","Set healthy boundaries, don't cover for them, and find support for yourself."],"Hard places"],
+["Care for someone with depression",["Listen without trying to fix them, and don't minimize their pain.","Stay in touch with short texts, visits and invitations, even if they say no.","Encourage them to see a doctor or counselor. Depression is treatable.","Pray for them and with them, if they're open to it.","If they talk about suicide, take it seriously. In the US, call or text 988 together, or call 911 in an emergency."],"Hard places"],
+["Keep a prayer list",["Write down people and needs, with the date you started praying.","Divide it by day so it doesn't get too long, like family on Monday and church on Tuesday.","Pray specifically, and ask people how you can pray for them.","Mark answers with the date. They'll build your faith.","Retire requests that are resolved, and keep the list fresh."],"Habits"],
+["Take a social media fast",["Choose a length: a day a week, a weekend, or a full week.","Delete or hide the apps for that time, and tell a friend.","Plan what you'll do instead: read, pray, call someone or get outside.","Notice what you miss and what you don't.","Come back with limits, like screen-time settings or no phone at meals."],"Habits"],
+["Read through the Bible in a year",["Pick a plan. Ember's reading plans are on the Devos tab.","Set a daily time and place, like with morning coffee.","Read about 15 minutes a day, or listen to an audio Bible on your commute.","If you fall behind, skip ahead to today's reading instead of quitting.","Read with a friend or group to stay encouraged."],"Habits"],
+["How to pray",["Try ACTS: adoration (praise God for who he is), confession, thanksgiving, then supplication (asking).","Pray the way you talk to a close friend. Plain words are welcome.","Use a short list of people and needs so your mind doesn't wander.","Pray a psalm out loud when you don't have words of your own.","End by listening for a minute in silence, then write down anything that stays with you."],"Your own faith"],
+["Study a Bible passage",["Pick a short passage, like a paragraph or a single story.","Observe: what does it say? Note who, what, where, repeated words and commands.","Interpret: what did it mean to the first readers? Read the verses around it.","Apply: what will you believe, change or do because of it this week?","Write one sentence that sums it up, and share it with someone."],"Your own faith"],
+["Memorize Scripture",["Choose one verse that speaks to your life right now.","Read it out loud five times, then write it from memory.","Learn it in phrases and add a phrase each day.","Keep it where you'll see it: your lock screen, mirror or car.","Review old verses once a week so they stay."],"Your own faith"],
+["Fasting",["Fasting is giving up food, or something else, for a time to focus on God.","Start small: skip one meal and spend that time praying.","Have a clear purpose, like seeking guidance or praying for someone.","Drink water. If you're pregnant, diabetic or have a health condition, talk to your doctor first, or fast from something other than food.","Keep it between you and God, as Jesus taught in Matthew 6:16-18."],"Your own faith"],
+["Journaling",["Keep it simple: a notebook or notes app and five minutes.","Write the date, a verse you read and what stood out to you.","Write a short prayer, and note what you're grateful for.","Record prayers and mark them when you see an answer.","Read back through it every few months to see God's faithfulness."],"Your own faith"],
+["Handling doubt",["Doubt is common. Thomas, David and John the Baptist all wrestled with questions.","Name your question clearly instead of letting it stay a vague worry.","Bring it to God honestly. Many psalms do exactly that.","Talk to a pastor or mature friend, and read a trusted book on your question.","Keep practicing your faith while you look for answers. Doubt and faith can live together."],"Your own faith"],
+["Sabbath rest",["Pick one day, or part of one, to stop work and rest with God.","Prepare the day before so chores and errands don't spill over.","Do what restores you: worship, a walk, a long meal, a nap.","Put away work email and shopping, and step back from screens if you can.","Treat rest as a gift, not a rule. Jesus said the Sabbath was made for people."],"Your own faith"],
+["Family devotions",["Keep it short: 10 to 15 minutes, at a meal or bedtime.","Read a short passage or a story from a children's Bible.","Ask one question: what does this teach us about God?","Let everyone share one thing to pray about, and pray together.","Aim for most days, not perfection. Missing a night is fine."],"Home and family"],
+["Pray with your spouse",["Start with a few minutes, a few nights a week.","Share one high, one low and one request from your day.","Take turns praying. Short, simple prayers are fine.","Pray for each other by name, and for your family.","If it feels awkward, read a psalm together and pray through it."],"Home and family"],
+["Read the Bible with kids",["Use a children's Bible with pictures for young kids.","Read with expression and let them act out the story.","Ask what happened, who God is in the story, and how we can live it.","Let older kids read aloud and lead sometimes.","Keep a routine, like bedtime, so it becomes part of the day."],"Home and family"],
+["Budget and give",["List your monthly income and every expense, even small ones.","Decide what you'll give first, before you spend on other things.","Give regularly to your church and to people in need.","Build a small emergency fund and pay down debt step by step.","Review your budget together each month if you're married. See 2 Corinthians 9:7."],"Home and family"],
+["Find your gifts",["Read Romans 12, 1 Corinthians 12 and 1 Peter 4:10-11.","Notice what you enjoy and what others thank you for.","Try serving in a few areas at church, like kids, music, hospitality or prayer.","Ask a pastor or friend what gifts they see in you.","Use what you find to serve others, not to rank yourself."],"Serving others"],
+["Mentor someone",["Pray for one person to walk with, often someone a step behind you in faith.","Meet every week or two, over coffee or a walk.","Read a book of the Bible together and talk about it.","Ask good questions and share your own struggles honestly.","Encourage them to mentor someone else one day."],"Serving others"],
+["Hospitality",["Start simple: invite someone over for soup or coffee.","Focus on the person, not a perfect house or meal.","Invite people who are new, lonely or different from you.","Ask questions and listen well.","Offer to pray with them before they leave, if it fits."],"Serving others"],
+["Visit the sick",["Call ahead or check visiting hours, and keep visits short.","Wash your hands, and stay home if you're sick yourself.","Listen more than you talk. Don't share stories of other people's illnesses.","Ask if you may pray with them, and read a short psalm.","Offer practical help, like meals, rides or care for pets."],"Serving others"],
+["Comfort someone who's grieving",["Show up. Your presence matters more than perfect words.","Say \"I'm so sorry\" and use the name of the person who died.","Avoid clichés like \"Everything happens for a reason.\"","Bring practical help, like meals, errands or childcare.","Check in again weeks and months later, and remember anniversaries."],"Serving others"],
+["Forgive someone",["Forgiveness is a choice to release a debt, as God has released ours (Ephesians 4:32).","Be honest about the hurt. Forgiving doesn't mean it didn't matter.","Pray for the person, even if your feelings lag behind.","Forgiving is not the same as trusting again. You can forgive and still keep safe boundaries.","Expect to forgive again when the memory returns. It's often a process."],"Serving others"],
+["Lead a small group",["Start with a clear purpose: study, prayer, or community. Say it out loud in week one.","Prepare 3 to 5 open questions, not a lecture. Aim to talk about a third of the time.","Begin with a simple icebreaker and end with prayer requests, then follow up during the week.","Create safety: confidentiality, no fixing or interrupting, and never force anyone to share.","Pray for each member by name and invite others to lead sections so the group grows leaders."],"Leading and sharing"],
+["Public speaking",["Build around one main idea you can say in a sentence.","Open with a story or question, give two or three points, close with one clear action.","Speak slower than feels natural and pause between points. Silence is fine.","Practice out loud three times, once standing, and time yourself.","Look at friendly faces, breathe, and remember you are serving, not performing."],"Leading and sharing"],
+["Share your testimony",["Keep it to 3 minutes: life before, how you met Jesus, life since.","Be specific and honest. Skip church jargon a friend wouldn't understand.","Focus on what Jesus did, not on how bad or good you were.","Close with one sentence that invites a question or a next step.","Write it down and rehearse it with a friend so it feels natural."],"Leading and sharing"],
+["Witnessing: neighbors, friends, strangers",["Pray first, then look for natural openings: needs, questions, and stories.","Neighbors: build trust through meals, help, and consistency. Friends: be honest about your faith without pressure.","Strangers: be kind, ask permission to share, and listen more than you talk.","Ask questions like \"What do you think happens after we die?\" and really listen.","Share your story, offer a Bible or invite them to church, and accept a no with grace."],"Leading and sharing"],
+["Share your faith online",["Post what's real: a verse that helped, a prayer answered, a lesson learned.","Be kind in comments, especially when you disagree.","Share helpful things, like a sermon, a song or a devotional.","Move deep conversations to a private message or a coffee.","Ask yourself before posting: does this point people to Jesus?"],"Leading and sharing"]];
+
 const POD={
 "Nondenominational / Evangelical":["The Bible Project","Ask Pastor John","The Craig Groeschel Leadership Podcast"],
 "Baptist":["Ask Pastor John","The Briefing with Albert Mohler","The Gospel Coalition Podcast"],
@@ -611,9 +646,8 @@ $("#qs").onclick=()=>{$("#qz").textContent=v.t;bump("mq");$("#qa").innerHTML=`<b
 $("#qy").onclick=()=>{const r=doMore("memo","memo");D.close();if(r)fx($("#bal"),r);else rewards();toast(r?"Hidden in your heart.":"Nice work. That's the most practice Ember can count today.")};
 $("#qn").onclick=()=>{D.close();rewards();toast("Keep at it. Practice counts toward today's goal.")}}}
 function grow(section){if(section=="pods")return go("podcasts");
-$("#main").innerHTML=`<section class="band"><h2>Grow</h2><p>Memory verses and practical guides for serving and sharing your faith.</p></section>
-${memoryHTML()}
-<div class="card list"><h3>Guides</h3>${G.map(g=>`<details><summary>${g[0]}</summary><ul>${g[1].map(x=>`<li>${x}</li>`).join("")}</ul></details>`).join("")}</div>`;
+$("#main").innerHTML=`<section class="band"><h2>Grow</h2><p>Practical guides for growing in faith, serving others and sharing what you believe.</p></section>
+<div class="card list"><h3>Guides</h3>${["Your own faith","Home and family","Serving others","Church life","Life stages","Outreach","Hard places","Habits","Leading and sharing"].map(h=>`<h4 class="gh">${h}</h4>`+G.filter(g=>g[2]==h).sort((a,b)=>a[0].localeCompare(b[0])).map(g=>`<details><summary>${g[0]}</summary><ul>${g[1].map(x=>`<li>${x}</li>`).join("")}</ul></details>`).join("")).join("")}</div>`;
 $$("[data-mv]").forEach(b=>b.onclick=()=>quiz(+b.dataset.mv));
 if(section){const el=document.getElementById(section);if(el)el.scrollIntoView({block:"start"})}}
 
@@ -819,8 +853,57 @@ jar:'<path d="M8 3h8v3H8z"/><path d="M7.5 6h9c1.6 1 2.5 2.6 2.5 4.5V18a3 3 0 0 1
 bible:'<path d="M6 3.5h11.5v14H7.5A1.5 1.5 0 0 0 6 19z"/><path d="M6 19a1.5 1.5 0 0 0 1.5 1.5h10v-3"/><path d="M11.75 6.5v7M9.25 9h5"/>',
 devos:'<path d="M4 10h12v3.5A5.5 5.5 0 0 1 10.5 19h-1A5.5 5.5 0 0 1 4 13.5z"/><path d="M16 11.5h1.25a2.25 2.25 0 0 1 0 4.5H15.5"/><path d="M8 3.5c0 1.5 1 1.5 1 3M12 3.5c0 1.5 1 1.5 1 3"/>',
 radio:'<rect x="3.5" y="9" width="17" height="11" rx="2.5"/><path d="M7 9l9.5-5"/><circle cx="8.5" cy="14.5" r="2"/><path d="M13.5 13h4M13.5 16h4"/>',
+resources:'<path d="M5 4.5h3v15H5z"/><path d="M10 4.5h3v15h-3z"/><path d="M15.1 5.6l2.9-.8 3.7 14.5-2.9.8z"/><path d="M3.5 19.5h11"/>',
 grow:'<path d="M4.5 18h15l-1.6 3.2H6.1z"/><path d="M12.5 18c0-2.2-2.3-3.2-1.8-5.6.4-1.9 2.6-2.5 2.3-4.6"/><path d="M9.5 7.8c0-1.6 1.5-2.8 3.5-2.8s3.8 1.1 3.8 2.6c0 .9-.8 1.4-1.8 1.4h-4c-.9 0-1.5-.5-1.5-1.2z"/><path d="M3.8 12.7c0-1 1-1.8 2.4-1.8s2.6.8 2.6 1.8c0 .6-.5.9-1.2.9H5c-.7 0-1.2-.3-1.2-.9z"/><path d="M15.2 11.2c0-1 1.1-1.8 2.5-1.8s2.5.8 2.5 1.8c0 .6-.5.9-1.2.9h-2.6c-.7 0-1.2-.3-1.2-.9z"/>',
 church:'<path d="M12 2.5v4M10 4.5h4"/><path d="M5 21v-9.5l7-5 7 5V21z"/><path d="M10 21v-3.5a2 2 0 0 1 4 0V21"/>'};
+/* =========================================================
+   Resources: commentaries and Pastor's Corner
+   RES: [key, name, description, url or function, group, earn]
+   ========================================================= */
+const RES=[
+["studylight","StudyLight.org commentaries","About 144 free commentaries for sermon and Bible study prep","https://www.studylight.org/commentaries/","Commentary libraries","study"],
+["blb","Blue Letter Bible","Classic commentaries, word studies and cross-references","https://www.blueletterbible.org/","Commentary libraries","study"],
+["preceptaustin","Precept Austin","Thousands of commentaries, sermons and articles for every book","https://www.preceptaustin.org/","Commentary libraries","study"],
+["constable","Constable's Notes","Thomas Constable's expository notes on all 66 books","https://soniclight.com/","Commentary libraries","study"],
+["utley","Free Bible Commentary","Bob Utley's study guide commentary, with audio and video","https://www.freebiblecommentary.org/","Commentary libraries","study"],
+["bgcomm","Bible Gateway commentaries","Free commentaries alongside the Bible text","https://www.biblegateway.com/resources/commentaries/","Commentary libraries","study"],
+["ccel","Christian Classics Ethereal Library","Calvin, Spurgeon, the church fathers and more","https://www.ccel.org/","Commentary libraries","study"],
+["interlinear","Bible Hub interlinear",()=>`Greek or Hebrew, word by word, for ${S.book} ${S.ch}`,()=>`https://biblehub.com/interlinear/${bhSlug(S.book)}/${S.ch}.htm`,"Greek and Hebrew","study"],
+["blbwords","Blue Letter Bible word studies","Strong's numbers, lexicons and every use of a word","https://www.blueletterbible.org/","Greek and Hebrew","study"],
+["step","STEP Bible","Free original-language tools from Tyndale House, Cambridge","https://www.stepbible.org/","Greek and Hebrew","study"],
+["netbible","NET Bible","Thousands of translators' notes on the Greek and Hebrew","https://netbible.org/","Greek and Hebrew","study"],
+["rcl","Revised Common Lectionary","Sunday readings and the church year, from Vanderbilt Divinity Library","https://lectionary.library.vanderbilt.edu/","Sermon prep",""],
+["maps","Bible maps","Every identifiable place in the Bible on a map, from OpenBible.info","https://www.openbible.info/geo/","Reference",""],
+["eastons","Easton's Bible Dictionary","Nearly 4,000 entries on people, places and customs","https://www.biblestudytools.com/dictionaries/eastons-bible-dictionary/","Reference",""],
+["dicts","More Bible dictionaries","Smith's, Baker's, Hitchcock's and more","https://www.biblestudytools.com/dictionaries/","Reference",""]];
+RES.forEach(([k,n,d,u,,e])=>ITEMS["res:"+k]={n,get s(){return typeof d=="function"?d():d},links:()=>[["Open",typeof u=="function"?u():u]],earn:e});
+[...new Set(RES.map(r=>r[4]))].forEach(g=>LISTS["res-"+aSlug(g)]=()=>RES.filter(r=>r[4]==g).map(r=>"res:"+r[0]));
+const PG=[
+["Write a sermon outline",["Study the passage first: observe, interpret, then read commentaries.","Write the main idea in one sentence. Everything else serves it.","Plan an introduction that raises the question the text answers.","Give two or three points that come from the text, each with an explanation, an illustration and an application.","Close by calling people to one clear response, then pray."],"Sermon prep"],
+["Hospital visits",["Call ahead, check with the nurse's station, and wash your hands.","Keep visits to 10 or 15 minutes unless they ask you to stay.","Sit at eye level, listen, and let them lead the conversation.","Read a short psalm and ask before you pray. Pray briefly and specifically.","Respect privacy. Don't share medical details without permission."],"Pastoral care"],
+["Funerals",["Meet the family soon. Listen to stories about the person who died.","Ask about faith, favorite Scriptures and songs, and any wishes.","Keep the service simple: welcome, Scripture, prayer, remembrance, a short message of hope, and benediction.","Speak honestly about grief and clearly about the hope of the resurrection.","Follow up with the family in the weeks and months that follow."],"Pastoral care"],
+["Weddings",["Meet with the couple for premarital counseling before the date.","Learn the legal requirements for officiating where the wedding will be held.","Plan the order: processional, welcome, Scripture, message, vows, rings, pronouncement and recessional.","Lead the rehearsal so everyone knows where to stand and when to move.","Make sure the marriage license is signed and filed on time."],"Pastoral care"],
+["Baptisms",["Meet with each person to hear their story of faith.","Explain what baptism means in your church's tradition.","Invite them to share a short testimony, live or recorded.","Plan the practical details: water, towels, changing area and safety.","Celebrate together, and connect them to a small group afterward."],"Pastoral care"],
+["When to refer to a counselor",["Refer when someone talks about suicide or self-harm, abuse, addiction, or serious mental illness.","Refer when problems go beyond your training or the number of meetings you can give.","Keep a list of trusted local Christian counselors and other professionals.","Stay involved as their pastor. Referral is not abandonment.","In the US, anyone in crisis can call or text 988. In an emergency, call 911."],"Pastoral care"],
+["Care for your own soul",["Read the Bible for your own soul, not only for sermons.","Keep a weekly day off and guard it like an appointment.","Have friends who know you as a person, not only as a pastor.","Meet regularly with a peer, mentor or counselor of your own.","Watch for warning signs of burnout: constant tiredness, cynicism and isolation. Tell someone early."],"Your own care"]];
+const guideHTML=g=>`<details><summary>${g[0]}</summary><ul>${g[1].map(x=>`<li>${x}</li>`).join("")}</ul></details>`;
+const resList=g=>`<div data-list="res-${aSlug(g)}">${listHTML("res-"+aSlug(g))}</div>`;
+const resGuides=g=>PG.filter(x=>x[2]==g).sort((a,b)=>a[0].localeCompare(b[0])).map(guideHTML).join("");
+function resources(){
+$("#main").innerHTML=`<section class="band"><h2>Resources</h2><p>Free commentaries and study tools, plus a Pastor's Corner for preaching and pastoral care.</p></section>
+<div class="card list" id="rcm"><h3>Commentaries</h3><p class="mut" style="margin:0 2px 8px">Pick a chapter, then open any commentary on it. Reading one lights Bible study for today.</p>
+<div class="row rpick"><select id="rbk" aria-label="Book">${BOOKS.map(b=>`<option ${b==S.book?"selected":""}>${b}</option>`).join("")}</select><input id="rch" type="number" min="1" inputmode="numeric" value="${S.ch}" aria-label="Chapter"></div>
+<div data-list="cm">${listHTML("cm")}</div>${addForm("cm","commentary")}</div>
+<div class="card list"><h3>Commentary libraries</h3><p class="mut" style="margin:0 2px 8px">Whole sites full of free commentaries and study helps.</p>${resList("Commentary libraries")}</div>
+<div class="card list"><h3>Pastor's Corner</h3><p class="mut" style="margin:0 2px 4px">Tools and guides for preaching, teaching and caring for your people.</p>
+<h4 class="gh">Greek and Hebrew</h4>${resList("Greek and Hebrew")}
+<h4 class="gh">Sermon prep</h4>${resList("Sermon prep")}<p class="mut" style="margin:6px 2px">For commentaries on your sermon text, use the Commentaries section above.</p>${resGuides("Sermon prep")}
+<h4 class="gh">Reference</h4>${resList("Reference")}
+<h4 class="gh">Pastoral care</h4>${resGuides("Pastoral care")}
+<h4 class="gh">Your own care</h4>${resGuides("Your own care")}</div>`;
+const pick=()=>{S.book=$("#rbk").value;S.ch=Math.max(1,+$("#rch").value||1);$("#rch").value=S.ch;save();renderLists()};
+$("#rbk").onchange=()=>{$("#rch").value=1;pick()};$("#rch").onchange=pick}
+
 /* =========================================================
    Verse of the day: [id, label, group, references]
    Text loads from bible-api.com in the reader's chosen version and is cached.
@@ -846,7 +929,7 @@ const VCATS=[
 ["children","For children","Who you are",["Matthew 19:14","1 Timothy 4:12","Ephesians 6:1-3","Psalm 139:14","Proverbs 3:5","Psalm 56:3","Luke 2:52","John 3:16","1 John 4:19","Colossians 3:20"]],
 ["young","For the young","Who you are",["1 Timothy 4:12","Ecclesiastes 12:1","Psalm 119:9","2 Timothy 2:22","Lamentations 3:27","Proverbs 20:29","Titus 2:6-7","Jeremiah 1:7","1 John 2:14","Proverbs 3:1-2"]],
 ["students","For students","Who you are",["Proverbs 1:7","Colossians 3:23","James 1:5","Proverbs 4:7","2 Timothy 2:15","Daniel 1:17","Proverbs 18:15","Proverbs 16:3","Psalm 90:12","Philippians 4:13"]],
-["old","For the old","Who you are",["Isaiah 46:4","Psalm 71:18","Psalm 92:14","Proverbs 16:31","2 Corinthians 4:16","Psalm 71:9","Job 12:12","Titus 2:2-3","Psalm 90:12","Isaiah 40:31"]],
+["old","For the elderly","Who you are",["Isaiah 46:4","Psalm 71:18","Psalm 92:14","Proverbs 16:31","2 Corinthians 4:16","Psalm 71:9","Job 12:12","Titus 2:2-3","Psalm 90:12","Isaiah 40:31"]],
 ["husbands","For husbands","Who you are",["Ephesians 5:25","Ephesians 5:28","Colossians 3:19","1 Peter 3:7","Proverbs 18:22","Ecclesiastes 9:9","1 Corinthians 13:4-7","Proverbs 5:18","Mark 10:9","Ecclesiastes 4:12"]],
 ["wives","For wives","Who you are",["Proverbs 31:10-12","Proverbs 31:25-26","Ephesians 5:33","Titus 2:4-5","1 Peter 3:3-4","Proverbs 31:30","1 Corinthians 13:4-7","Colossians 3:18","Ruth 1:16","Proverbs 14:1"]],
 ["parents","For parents","Who you are",["Proverbs 22:6","Deuteronomy 6:6-7","Ephesians 6:4","Psalm 127:3","Colossians 3:21","Isaiah 54:13","3 John 1:4","Psalm 103:13","Proverbs 29:17","Joshua 24:15"]],
@@ -867,32 +950,37 @@ function vSave(){try{const k=Object.keys(VCACHE);if(k.length>300)k.slice(0,k.len
 async function vText(ref,tr){const key=tr+"|"+ref;if(VCACHE[key])return VCACHE[key];
 const r=await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=${tr}`);if(!r.ok)throw 0;const j=await r.json();
 const v={t:j.verses.map(x=>x.text.trim()).join(" ").replace(/\s+/g," "),n:j.translation_name||TR[tr]};VCACHE[key]=v;vSave();return v}
+const vTr=()=>S.vtr||S.tr||"web";
+function vtrOptions(){const cur=vTr(),L=[...new Set(TRS.map(t=>t[2]))];
+return L.map(l=>`<optgroup label="${l=="English"?"Shown here":"Shown here: "+l.toLowerCase()}">${TRS.filter(t=>t[2]==l).map(t=>`<option value="${t[0]}"${cur==t[0]?" selected":""}>${esc(t[1])}</option>`).join("")}</optgroup>`).join("")
++`<optgroup label="Opens on Bible Gateway">${BGV.map(b=>`<option value="bg:${b[0]}"${cur=="bg:"+b[0]?" selected":""}>${esc(b[1])} (${b[0]})</option>`).join("")}</optgroup>`}
 function votdHTML(){const c=S.vcat||"any",G=[...new Set(VCATS.map(x=>x[2]))];
 return `<div class="card votd" id="votd"><div class="vh"><h3>Verse of the day</h3>
 <select id="vcat" aria-label="Choose a kind of verse"><option value="any"${c=="any"?" selected":""}>Any kind</option>${G.map(g=>`<optgroup label="${g}">${VCATS.filter(x=>x[2]==g).map(x=>`<option value="${x[0]}"${c==x[0]?" selected":""}>${x[1]}</option>`).join("")}</optgroup>`).join("")}</select></div>
+<select id="vtr" class="vtr" aria-label="Bible version for the verse">${vtrOptions()}</select>
 <div id="vbody" aria-live="polite"></div>
-<div class="vact"><button class="btn ghost sm" id="vnx">Another verse</button><button class="btn ghost sm" id="vkp">Keep for memory</button><button class="btn ghost sm" id="vsh">Share</button></div></div>`}
+<div class="vact"><button class="btn ghost sm" id="vnx">Another verse</button><button class="btn ghost sm" id="vsh">Share</button></div></div>`}
 let vNow=null;
-async function paintVotd(){const b=$("#vbody");if(!b)return;const ref=vPick(),tr=S.tr||"web";vNow={r:ref,t:""};
-const kp=$("#vkp");if(kp){kp.disabled=isKept(ref);kp.textContent=isKept(ref)?"Kept for memory":"Keep for memory"}
+async function paintVotd(){const b=$("#vbody");if(!b)return;const ref=vPick(),tr=vTr();vNow={r:ref,t:""};
+if(tr.startsWith("bg:")){const c=tr.slice(3),nm=(BGV.find(x=>x[0]==c)||[c,c])[1];b.innerHTML=`<p class="vref vbig"><b>${esc(ref)}</b></p><p class="mut">The ${esc(nm)} is copyrighted, so it opens on Bible Gateway.</p><a class="btn sm" href="https://www.biblegateway.com/passage/?search=${encodeURIComponent(ref)}&version=${encodeURIComponent(c)}" target="_blank" rel="noopener">Read ${esc(ref)} in the ${esc(c)}</a>`;
+try{const v=await vText(ref,S.tr&&!S.tr.startsWith("bg:")?S.tr:"web");if(vNow.r===ref)vNow.t=v.t}catch(e){}return}
 const key=tr+"|"+ref;if(!VCACHE[key])b.innerHTML=`<p class="vref"><b>${esc(ref)}</b></p><p class="mut">Opening your Bible…</p>`;
 try{const v=await vText(ref,tr);if(vNow.r!==ref)return;vNow.t=v.t;
 b.innerHTML=`<blockquote class="vtx">${esc(v.t)}</blockquote><p class="vref"><b>${esc(ref)}</b> <span class="mut">${esc(v.n)}</span></p>`}
 catch(e){if(vNow.r!==ref)return;b.innerHTML=`<p class="vref"><b>${esc(ref)}</b></p><p class="mut">The verse couldn't load right now. <a href="https://www.biblegateway.com/passage/?search=${encodeURIComponent(ref)}" target="_blank" rel="noopener">Read ${esc(ref)} on Bible Gateway</a>.</p>`}}
 function bindVotd(){if(!$("#votd"))return;
 $("#vcat").onchange=e=>{S.vcat=e.target.value;S.vo=0;save();paintVotd()};
+$("#vtr").onchange=e=>{S.vtr=e.target.value;save();paintVotd()};
 $("#vnx").onclick=()=>{S.vod=day();S.vo=(S.vo||0)+1;save();paintVotd()};
-$("#vkp").onclick=()=>{if(!vNow||!vNow.t){toast("Wait for the verse to load, then keep it.");return}if(isKept(vNow.r))return;
-S.verses.push({r:vNow.r,t:vNow.t});save();paintVotd();toast(`Kept ${vNow.r}. Practice it on the Grow tab.`)};
-$("#vsh").onclick=async()=>{if(!vNow)return;const msg=`${vNow.t?`"${vNow.t}" `:""}${vNow.r}\n\nFrom Ember: ${appUrl()}`;
+$("#vsh").onclick=async()=>{if(!vNow)return;const T=vTr(),msg=T.startsWith("bg:")?`${vNow.r} (${T.slice(3)}): https://www.biblegateway.com/passage/?search=${encodeURIComponent(vNow.r)}&version=${encodeURIComponent(T.slice(3))}\n\nFrom Ember: ${appUrl()}`:`${vNow.t?`"${vNow.t}" `:""}${vNow.r}\n\nFrom Ember: ${appUrl()}`;
 try{if(navigator.share){await navigator.share({text:msg});return}}catch(e){return}
 try{await navigator.clipboard.writeText(msg);toast("Verse copied. Paste it anywhere.")}catch(e){toast("Couldn't copy the verse.")}};
 paintVotd()}
 
-const TABS=[["today","Today",today],["jar","Jar",jar],["bible","Bible",bible],["devos","Devos",devos],["podcasts","Podcasts",podcasts],["radio","Radio",radio],["grow","Grow",grow],["church","Church",church]];
+const TABS=[["today","Today",today],["jar","Jar",jar],["bible","Bible",bible],["resources","Resources",resources],["devos","Devos",devos],["podcasts","Podcasts",podcasts],["radio","Radio",radio],["grow","Grow",grow],["church","Church",church]];
 let tab="today";
 $("#nav").innerHTML=TABS.map(t=>`<button role="tab" data-n="${t[0]}"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[t[0]]}</svg></span><span class="lb">${t[1]}</span></button>`).join("");
-function go(n,section){tab=n;$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.n==n));$("#main").scrollTop=0;TABS.find(t=>t[0]==n)[2](section)}
+function go(n,section){tab=n;gc("tab-"+n);$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.n==n));$("#main").scrollTop=0;TABS.find(t=>t[0]==n)[2](section)}
 $$("#nav button").forEach(b=>b.onclick=()=>go(b.dataset.n));
 guard();chip();go("today");rewards();
 if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
