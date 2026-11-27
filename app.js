@@ -199,13 +199,27 @@ function flame(){return `<div class="fl"><svg viewBox="0 0 200 240" aria-hidden=
 <g class="body"><g transform="translate(-40.8 -22.5) scale(.55)"><path class="outer" d="${FP}" fill="url(#fo)"/><path class="core" d="${CP}" fill="#FFF3DC"/></g></g></svg></div>`}
 const mini=f=>`<svg viewBox="0 0 24 28" aria-hidden="true"><path d="${MINI}" transform="translate(12 27) scale(${(.4+.6*f).toFixed(2)}) translate(-12 -27)" fill="${f?"#F5B042":"#4A3866"}" opacity="${f?(.5+.5*f).toFixed(2):1}"/></svg>`;
 const row=(id,o)=>`<button class="hr" data-t="${id}" ${o?'data-o="1"':""} aria-pressed="false"><span class="ring">${glyph()}</span><span class="t"><b>${esc(name(id))}</b><span class="mut" data-s></span></span><span class="gain" data-g></span></button>`;
+const rowW=(id,o)=>id=="tithe"?`<div class="hrw">${row(id,o)}<button class="btn ghost sm givebtn" data-give aria-label="Give to your home church">Give</button></div>`:row(id,o);
+/* ---------- Giving: opens the church's own giving page; payment details never touch Ember ---------- */
+function giveSetup(){const D=$("#dlg");D.innerHTML=`<h2 class="serif">Give to your home church</h2><p class="mut">Paste your church's online giving page. It opens in your browser, so payment details never touch Ember.</p>
+<input id="givel" type="url" inputmode="url" placeholder="https://yourchurch.org/give" value="${esc(S.tithe||"")}" aria-label="Giving link"><p id="givem" class="mut" aria-live="polite"></p>
+<div class="row"><button class="btn" id="gives">Save and give</button><button class="btn ghost" id="givec">Cancel</button></div>${S.tithe?`<p><button class="btn ghost sm" id="giver">Remove link</button></p>`:""}`;D.showModal();
+$("#givec").onclick=()=>D.close();if($("#giver"))$("#giver").onclick=()=>{S.tithe="";save();D.close();toast("Giving link removed.")};
+$("#gives").onclick=()=>{let u=$("#givel").value.trim();if(u&&!/^https?:\/\//i.test(u))u="https://"+u;
+try{if(!u||!new URL(u).hostname.includes("."))throw 0}catch(e){$("#givem").textContent="Enter your church's giving page, like https://yourchurch.org/give";$("#givel").focus();return}
+S.tithe=u;save();D.close();giveNow()}}
+function giveNow(el){if(!S.tithe)return giveSetup();window.open(S.tithe,"_blank","noopener");
+const tOn=S.on.includes("tithe"),already=done("tithe")||doneEarlier("tithe",day());const res=tOn&&!already?mark("tithe"):null;
+toast(!tOn?"Giving page opened.":already?`Giving page opened. Tithing is already lit this ${UNIT[sch("tithe").f]||"day"}.`:"Giving page opened. Tithing is lit.",true,{label:"Change link",fn:giveSetup});
+if(res){if(el)fx(el,res);if(tab=="today")refresh()}}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-give]");if(b){e.preventDefault();giveNow(b)}});
 function today(){
 const on=S.on,ex=expected(),rest=on.filter(i=>!ex.includes(i));
 $("#main").innerHTML=`<section class="hero2"><p class="dt">${new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</p>${flame()}<h2 class="big" id="hh"></h2><p class="hs" id="hs"></p><p class="tier" id="tier" hidden></p><div class="wk" id="wk" role="img"></div></section>
 <div class="sheet">${!on.length?`<div class="empty"><p>Pick the practices that keep your fire going this season.</p><button class="btn" onclick="cust()">Choose practices</button></div>`
-:ex.length?ex.map(id=>row(id)).join(""):`<div class="empty"><p>Nothing is due today. Anything you light below is bonus heat.</p></div>`}</div>
+:ex.length?ex.map(id=>rowW(id)).join(""):`<div class="empty"><p>Nothing is due today. Anything you light below is bonus heat.</p></div>`}</div>
 ${votdHTML()}
-${rest.length?`<div class="card list"><h3>Also on your list</h3><p class="mut" style="margin:0 2px 4px">Weekly, monthly and whenever-it-happens practices. Lighting one counts for its week or month and adds bonus heat today.</p>${rest.map(id=>row(id,1)).join("")}</div>`:""}
+${rest.length?`<div class="card list"><h3>Also on your list</h3><p class="mut" style="margin:0 2px 4px">Weekly, monthly and whenever-it-happens practices. Lighting one counts for its week or month and adds bonus heat today.</p>${rest.map(id=>rowW(id,1)).join("")}</div>`:""}
 <div id="goals"></div><div id="further"></div>
 <div class="card invite"><h3>Share Ember</h3><p class="mut" style="margin:4px 0 12px">Know someone who'd love this app? Send them the link by text, email, Snapchat or any app.</p>
 <a class="lpv" href="${esc(appUrl())}" target="_blank" rel="noopener">${appShot()}<span class="lpt"><b>Ember: keep your faith fire lit</b><span>Light a flame for each daily practice, like Bible reading, prayer and church. Your flame grows, streaks build and embers fill your jar. Free, with nothing to download.</span><u>${esc(appUrl().replace(/^https?:\/\//,""))}</u></span></a>
@@ -264,7 +278,7 @@ function paintGoals(){const g=$("#goals");if(g)g.innerHTML=goalsHTML();const f=$
 function bindFurther(){$$("[data-x]").forEach(b=>b.onclick=()=>{const k=b.dataset.x;
 if(k=="pray")return prayTimer();
 if(k=="kind"){const r=doMore("kind","kind");if(!r)return toast("That's the most kindness Ember can count today. Keep going anyway.");fx(b.querySelector(".pill"),r);refresh();return}
-if(k=="ch")return go("bible");if(k=="devo")return go("devos");
+if(k=="ch")return go("bible","read");if(k=="devo")return go("devos");
 if(k=="pod")return go("podcasts");if(k=="radio")return go("radio")})}
 function refresh(){if(tab=="today"){paint();paintGoals()}else if(tab=="jar")jar();chip()}
 
@@ -471,15 +485,33 @@ function commChips(){const f=LISTS.cm().filter(isFav);return f.length?f.map(k=>{
 function commentaries(){return `<h3>Commentaries on ${esc(S.book)} ${S.ch}</h3><p class="mut" style="margin:0 2px 8px">Free commentaries open this chapter on Bible Hub or Enduring Word. Reading one lights Bible study for today.</p>
 <div class="chips2" data-strip="cmchips">${commChips()}</div>
 <details><summary>All ${LISTS.cm().length} commentaries</summary><div data-list="cm">${listHTML("cm")}</div></details>${addForm("cm","commentary")}`}
-function bible(){
-$("#main").innerHTML=`<section class="band"><div class="bt"><button class="nb" id="pv" aria-label="Previous chapter">${CHL}</button><h2 id="ref" aria-live="polite">${esc(S.book)} ${S.ch}</h2><button class="nb" id="nx" aria-label="Next chapter">${CHR}</button></div>
+const BSEG=[["read","Read"],["study","Study"],["pastor","Pastor's Corner"]];
+function bible(seg){if(seg&&BSEG.some(x=>x[0]==seg))S.bseg=seg;const g=BSEG.some(x=>x[0]==S.bseg)?S.bseg:"read";
+const segs=`<div class="seg" role="tablist" aria-label="Bible tab sections">${BSEG.map(([k,l])=>`<button role="tab" data-seg="${k}" aria-selected="${k==g}">${l}</button>`).join("")}</div>`;
+const nav=`<div class="bt"><button class="nb" id="pv" aria-label="Previous chapter">${CHL}</button><h2 id="ref" aria-live="polite">${esc(S.book)} ${S.ch}</h2><button class="nb" id="nx" aria-label="Next chapter">${CHR}</button></div>
 <div class="ctl"><select id="bk" aria-label="Book">${BOOKS.map(b=>`<option ${b==S.book?"selected":""}>${b}</option>`).join("")}</select><input id="ch" type="number" min="1" inputmode="numeric" value="${S.ch}" aria-label="Chapter">
-<div class="trrow"><select id="tr" aria-label="Translation">${trOptions()}</select><span id="trf">${favBtn("tr:"+S.tr,TR[S.tr])}</span></div></div></section><div class="card" id="txt"></div><div class="card list" id="ov">${otherVersions()}</div><div class="card list" id="cmc">${commentaries()}</div>`;
-const load=async dir=>{S.book=$("#bk").value;S.ch=Math.max(1,+$("#ch").value||1);$("#ch").value=S.ch;S.tr=$("#tr").value;save();$("#ref").textContent=`${S.book} ${S.ch}`;$("#trf").innerHTML=favBtn("tr:"+S.tr,TR[S.tr]);
+${g=="read"?`<div class="trrow"><select id="tr" aria-label="Translation">${trOptions()}</select><span id="trf">${favBtn("tr:"+S.tr,TR[S.tr])}</span></div>`:""}</div>`;
+let body="";
+if(g=="read")body=`<div class="card" id="txt"></div><div class="card list" id="ov">${otherVersions()}</div>
+<div class="card deeper"><h3>Go deeper</h3><p class="mut" id="dpt">Commentaries, Greek and Hebrew, maps and dictionaries for ${esc(S.book)} ${S.ch} are in Study.</p><button class="btn" data-goseg="study">Study this chapter</button></div>`;
+if(g=="study")body=`<div class="card list" id="cmc">${commentaries()}</div>
+<div class="card list"><h3>Greek and Hebrew</h3><p class="mut" style="margin:0 2px 8px">Look at the original words behind the chapter you picked.</p>${resList("Greek and Hebrew")}</div>
+<div class="card list"><h3>Commentary libraries</h3><p class="mut" style="margin:0 2px 8px">Whole sites full of free commentaries and study helps.</p>${resList("Commentary libraries")}</div>
+<div class="card list"><h3>Maps and dictionaries</h3>${resList("Reference")}</div>`;
+if(g=="pastor")body=`<div class="card list"><h3>Sermon prep</h3><p class="mut" style="margin:0 2px 8px">Commentaries and Greek and Hebrew tools are in Study.</p>${resList("Sermon prep")}${resGuides("Sermon prep")}</div>
+<div class="card list"><h3>Pastoral care</h3>${resGuides("Pastoral care")}</div>
+<div class="card list"><h3>Your own care</h3>${resGuides("Your own care")}</div>`;
+$("#main").innerHTML=`<section class="band bband">${segs}${g=="pastor"?`<h2>Pastor's Corner</h2><p>Tools and guides for preaching, teaching and caring for your people.</p>`:nav}</section>${body}`;
+$$("[data-seg]").forEach(b=>b.onclick=()=>{if(b.dataset.seg!==g){bible(b.dataset.seg);save()}});
+$$("[data-goseg]").forEach(b=>b.onclick=()=>{bible(b.dataset.goseg);save();$("#main").scrollTop=0});
+if(g=="pastor")return;
+const load=async dir=>{S.book=$("#bk").value;S.ch=Math.max(1,+$("#ch").value||1);$("#ch").value=S.ch;if($("#tr"))S.tr=$("#tr").value;save();$("#ref").textContent=`${S.book} ${S.ch}`;
+if(g=="study"){$("#cmc").innerHTML=commentaries();renderLists();return}
+$("#trf").innerHTML=favBtn("tr:"+S.tr,TR[S.tr]);$("#dpt").textContent=`Commentaries, Greek and Hebrew, maps and dictionaries for ${S.book} ${S.ch} are in Study.`;
 let j=await fetchPassage(`${S.book} ${S.ch}`,S.tr,$("#txt"),"bible",false);
 if(j==="nf"&&dir>0){const i=BOOKS.indexOf(S.book);if(i<65){S.book=BOOKS[i+1];S.ch=1;$("#bk").value=S.book;$("#ch").value=1;save();$("#ref").textContent=`${S.book} 1`;j=await fetchPassage(`${S.book} 1`,S.tr,$("#txt"),"bible",false)}}
-if(j&&j!=="nf")$("#ref").textContent=j.reference;$("#ov").innerHTML=otherVersions();$("#cmc").innerHTML=commentaries()};
-$("#bk").onchange=()=>{$("#ch").value=1;load(0)};$("#ch").onchange=()=>load(0);$("#tr").onchange=()=>load(0);
+if(j&&j!=="nf")$("#ref").textContent=j.reference;$("#ov").innerHTML=otherVersions()};
+$("#bk").onchange=()=>{$("#ch").value=1;load(0)};$("#ch").onchange=()=>load(0);if($("#tr"))$("#tr").onchange=()=>load(0);
 $("#pv").onclick=()=>{$("#ch").value=Math.max(1,$("#ch").value-1);load(-1)};$("#nx").onclick=()=>{$("#ch").value=+$("#ch").value+1;load(1)};load(0)}
 
 /* =========================================================
@@ -564,19 +596,6 @@ function bindSeg(){$$("[data-rt]").forEach(b=>b.onclick=()=>{S.rt=b.dataset.rt;s
    ========================================================= */
 const MO="(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?\\s+\\d{1,2}",WD="(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*",TM="\\d{1,2}(?::\\d{2})?\\s?(?:am|pm|a\\.m\\.|p\\.m\\.)";
 const RX=new RegExp(`(${MO}(?:st|nd|rd|th)?|\\b\\d{1,2}/\\d{1,2}(?:/\\d{2,4})?\\b|\\b${WD}\\b|${TM})`,"gi");
-function church(){
-$("#main").innerHTML=`<section class="band"><h2>Church</h2><p>Give, keep your church's links close, and find what's coming up.</p></section>
-<div class="card"><h3>Give to your home church</h3><p class="mut">Save your church's giving page. It opens in your browser, so payment details never touch Ember.</p><input id="tl" type="url" placeholder="https://yourchurch.org/give" value="${esc(S.tithe)}" aria-label="Giving link"><div class="row"><button class="btn" id="tg">Give now</button><button class="btn ghost" id="ts">Save link</button></div><p id="tm" class="mut" aria-live="polite"></p></div>
-<div class="card list"><h3>Church links</h3><p class="mut" style="margin:0 2px 6px">Website, livestream, social pages: one tap away.</p><div id="ll"></div><div class="row" style="margin:10px 0 4px"><input id="ln" placeholder="Name, like Instagram" aria-label="Link name"><input id="lu" type="url" placeholder="https://" aria-label="Link address"></div><p><button class="btn ghost" id="la">Add link</button></p></div>
-<div class="card"><h3>Find events</h3><p class="mut">Instagram, Facebook and TikTok don't let apps read their posts. Copy the text of a post, bulletin or newsletter and paste it here. Ember picks out the lines with dates and times.</p><textarea id="an" rows="5" placeholder="Paste announcements here" aria-label="Announcements"></textarea><button class="btn" id="ax">Find events</button><div id="ao" aria-live="polite"></div></div>`;
-const links=()=>{$("#ll").innerHTML=S.links.length?S.links.map((l,i)=>`<div class="h"><a class="t" href="${esc(l.u)}" target="_blank" rel="noopener"><b>${esc(l.n)}</b></a><button class="btn ghost sm" data-r="${i}" aria-label="Remove ${esc(l.n)}">Remove</button></div>`).join(""):`<p class="mut" style="margin:6px 2px">No links yet. Add your first one below.</p>`;$$("[data-r]").forEach(b=>b.onclick=()=>{S.links.splice(b.dataset.r,1);save();links()})};links();
-const ok=u=>/^https?:\/\//i.test(u);
-$("#ts").onclick=()=>{const u=$("#tl").value.trim();if(u&&!ok(u)){$("#tm").textContent="The link must start with http:// or https://";return}S.tithe=u;save();$("#tm").textContent=u?"Link saved.":"Link cleared."};
-$("#tg").onclick=()=>{if(!S.tithe){$("#tm").textContent="Paste your giving link and save it first.";return}window.open(S.tithe,"_blank","noopener");const tOn=S.on.includes("tithe"),already=done("tithe")||doneEarlier("tithe",day());const res=tOn&&!already?mark("tithe"):null;$("#tm").textContent=!tOn?"Giving page opened.":already?`Giving page opened. Tithing is already lit this ${UNIT[sch("tithe").f]||"day"}.`:"Giving page opened. Tithing is lit.";if(res)fx($("#tg"),res)};
-$("#la").onclick=()=>{const u=$("#lu").value.trim(),n=$("#ln").value.trim()||u;if(!ok(u)){$("#lu").focus();return}S.links.push({n,u});save();$("#ln").value=$("#lu").value="";links()};
-$("#ax").onclick=()=>{const L=$("#an").value.split(/\n+/).map(s=>s.trim()).filter(s=>s.length>5);const hits=L.filter(l=>{RX.lastIndex=0;return RX.test(l)});
-$("#ao").innerHTML=hits.length?`<p class="mut" style="margin:14px 0 0">${hits.length} line${hits.length>1?"s":""} worth circling</p>`+hits.map(l=>`<div class="h"><span>${esc(l).replace(RX,m=>`<mark>${m}</mark>`)}</span></div>`).join(""):`<p class="mut">No dates or times found. Paste text that includes them.</p>`}}
-
 /* =========================================================
    Grow
    ========================================================= */
@@ -853,9 +872,8 @@ jar:'<path d="M8 3h8v3H8z"/><path d="M7.5 6h9c1.6 1 2.5 2.6 2.5 4.5V18a3 3 0 0 1
 bible:'<path d="M6 3.5h11.5v14H7.5A1.5 1.5 0 0 0 6 19z"/><path d="M6 19a1.5 1.5 0 0 0 1.5 1.5h10v-3"/><path d="M11.75 6.5v7M9.25 9h5"/>',
 devos:'<path d="M4 10h12v3.5A5.5 5.5 0 0 1 10.5 19h-1A5.5 5.5 0 0 1 4 13.5z"/><path d="M16 11.5h1.25a2.25 2.25 0 0 1 0 4.5H15.5"/><path d="M8 3.5c0 1.5 1 1.5 1 3M12 3.5c0 1.5 1 1.5 1 3"/>',
 radio:'<rect x="3.5" y="9" width="17" height="11" rx="2.5"/><path d="M7 9l9.5-5"/><circle cx="8.5" cy="14.5" r="2"/><path d="M13.5 13h4M13.5 16h4"/>',
-resources:'<path d="M5 4.5h3v15H5z"/><path d="M10 4.5h3v15h-3z"/><path d="M15.1 5.6l2.9-.8 3.7 14.5-2.9.8z"/><path d="M3.5 19.5h11"/>',
 grow:'<path d="M4.5 18h15l-1.6 3.2H6.1z"/><path d="M12.5 18c0-2.2-2.3-3.2-1.8-5.6.4-1.9 2.6-2.5 2.3-4.6"/><path d="M9.5 7.8c0-1.6 1.5-2.8 3.5-2.8s3.8 1.1 3.8 2.6c0 .9-.8 1.4-1.8 1.4h-4c-.9 0-1.5-.5-1.5-1.2z"/><path d="M3.8 12.7c0-1 1-1.8 2.4-1.8s2.6.8 2.6 1.8c0 .6-.5.9-1.2.9H5c-.7 0-1.2-.3-1.2-.9z"/><path d="M15.2 11.2c0-1 1.1-1.8 2.5-1.8s2.5.8 2.5 1.8c0 .6-.5.9-1.2.9h-2.6c-.7 0-1.2-.3-1.2-.9z"/>',
-church:'<path d="M12 2.5v4M10 4.5h4"/><path d="M5 21v-9.5l7-5 7 5V21z"/><path d="M10 21v-3.5a2 2 0 0 1 4 0V21"/>'};
+};
 /* =========================================================
    Resources: commentaries and Pastor's Corner
    RES: [key, name, description, url or function, group, earn]
@@ -889,20 +907,6 @@ const PG=[
 const guideHTML=g=>`<details><summary>${g[0]}</summary><ul>${g[1].map(x=>`<li>${x}</li>`).join("")}</ul></details>`;
 const resList=g=>`<div data-list="res-${aSlug(g)}">${listHTML("res-"+aSlug(g))}</div>`;
 const resGuides=g=>PG.filter(x=>x[2]==g).sort((a,b)=>a[0].localeCompare(b[0])).map(guideHTML).join("");
-function resources(){
-$("#main").innerHTML=`<section class="band"><h2>Resources</h2><p>Free commentaries and study tools, plus a Pastor's Corner for preaching and pastoral care.</p></section>
-<div class="card list" id="rcm"><h3>Commentaries</h3><p class="mut" style="margin:0 2px 8px">Pick a chapter, then open any commentary on it. Reading one lights Bible study for today.</p>
-<div class="row rpick"><select id="rbk" aria-label="Book">${BOOKS.map(b=>`<option ${b==S.book?"selected":""}>${b}</option>`).join("")}</select><input id="rch" type="number" min="1" inputmode="numeric" value="${S.ch}" aria-label="Chapter"></div>
-<div data-list="cm">${listHTML("cm")}</div>${addForm("cm","commentary")}</div>
-<div class="card list"><h3>Commentary libraries</h3><p class="mut" style="margin:0 2px 8px">Whole sites full of free commentaries and study helps.</p>${resList("Commentary libraries")}</div>
-<div class="card list"><h3>Pastor's Corner</h3><p class="mut" style="margin:0 2px 4px">Tools and guides for preaching, teaching and caring for your people.</p>
-<h4 class="gh">Greek and Hebrew</h4>${resList("Greek and Hebrew")}
-<h4 class="gh">Sermon prep</h4>${resList("Sermon prep")}<p class="mut" style="margin:6px 2px">For commentaries on your sermon text, use the Commentaries section above.</p>${resGuides("Sermon prep")}
-<h4 class="gh">Reference</h4>${resList("Reference")}
-<h4 class="gh">Pastoral care</h4>${resGuides("Pastoral care")}
-<h4 class="gh">Your own care</h4>${resGuides("Your own care")}</div>`;
-const pick=()=>{S.book=$("#rbk").value;S.ch=Math.max(1,+$("#rch").value||1);$("#rch").value=S.ch;save();renderLists()};
-$("#rbk").onchange=()=>{$("#rch").value=1;pick()};$("#rch").onchange=pick}
 
 /* =========================================================
    Verse of the day: [id, label, group, references]
@@ -977,7 +981,7 @@ try{if(navigator.share){await navigator.share({text:msg});return}}catch(e){retur
 try{await navigator.clipboard.writeText(msg);toast("Verse copied. Paste it anywhere.")}catch(e){toast("Couldn't copy the verse.")}};
 paintVotd()}
 
-const TABS=[["today","Today",today],["jar","Jar",jar],["bible","Bible",bible],["resources","Resources",resources],["devos","Devos",devos],["podcasts","Podcasts",podcasts],["radio","Radio",radio],["grow","Grow",grow],["church","Church",church]];
+const TABS=[["today","Today",today],["jar","Jar",jar],["bible","Bible",bible],["devos","Devos",devos],["podcasts","Podcasts",podcasts],["radio","Radio",radio],["grow","Grow",grow]];
 let tab="today";
 $("#nav").innerHTML=TABS.map(t=>`<button role="tab" data-n="${t[0]}"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[t[0]]}</svg></span><span class="lb">${t[1]}</span></button>`).join("");
 function go(n,section){tab=n;gc("tab-"+n);$$("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.n==n));$("#main").scrollTop=0;TABS.find(t=>t[0]==n)[2](section)}
